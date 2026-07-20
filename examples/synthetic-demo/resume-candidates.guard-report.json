@@ -1,0 +1,8 @@
+{
+  "guard_version": "1.0.0",
+  "status": "pass",
+  "source_archive_sha256": "1a735da1189b4f9c7e4b2d78c0b228ddc78486217d5313f36cc6c401c221bac9",
+  "candidates_sha256": "aa96cef8d3c1d527c1f31fb3c620cc04f0f0343f613df019c2a0f798d45deddc",
+  "checked_at": "2026-07-20T08:45:50Z",
+  "errors": []
+}

@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/verified-project-resume/resume-candidates.schema.json",
+  "title": "Verified Resume Candidates",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_archive",
+    "settings",
+    "project_summaries",
+    "candidate_groups",
+    "excluded_claims",
+    "warnings",
+    "guard"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "source_archive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_role", "languages", "bullet_count", "focus"],
+      "properties": {
+        "target_role": {"type": ["string", "null"]},
+        "languages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {"enum": ["zh-CN", "en"]}
+        },
+        "bullet_count": {"type": "integer", "minimum": 2, "maximum": 4},
+        "focus": {"type": ["string", "null"]}
+      }
+    },
+    "project_summaries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "items": {"$ref": "#/$defs/sourcedText"}
+    },
+    "candidate_groups": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/candidateGroup"}
+    },
+    "excluded_claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim_id", "reason"],
+        "properties": {
+          "claim_id": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "guard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "status", "errors", "checked_at"],
+      "properties": {
+        "version": {"const": "1.0.0"},
+        "status": {"enum": ["draft", "pass", "fail"]},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "checked_at": {"type": ["string", "null"]}
+      }
+    }
+  },
+  "$defs": {
+    "idList": {
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true
+    },
+    "sourcedText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "text", "claim_ids", "evidence_ids", "metric_ids"],
+      "properties": {
+        "language": {"enum": ["zh-CN", "en"]},
+        "text": {"type": "string", "minLength": 1},
+        "claim_ids": {"$ref": "#/$defs/idList"},
+        "evidence_ids": {"$ref": "#/$defs/idList"},
+        "metric_ids": {"$ref": "#/$defs/idList"}
+      }
+    },
+    "clause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "claim_ids", "evidence_ids", "metric_ids"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1},
+        "claim_ids": {"$ref": "#/$defs/idList"},
+        "evidence_ids": {"$ref": "#/$defs/idList"},
+        "metric_ids": {"$ref": "#/$defs/idList"}
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "language", "text", "clauses", "interview_questions", "risk_flags", "submittable"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "language": {"enum": ["zh-CN", "en"]},
+        "text": {"type": "string", "minLength": 1},
+        "clauses": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "method", "result"],
+          "properties": {
+            "action": {"$ref": "#/$defs/clause"},
+            "method": {"$ref": "#/$defs/clause"},
+            "result": {"$ref": "#/$defs/clause"}
+          }
+        },
+        "interview_questions": {"type": "array", "items": {"type": "string"}},
+        "risk_flags": {"type": "array", "items": {"type": "string"}},
+        "submittable": {"type": "boolean"}
+      }
+    },
+    "candidateGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["semantic_group_id", "compression_method", "variants"],
+      "properties": {
+        "semantic_group_id": {"type": "string", "minLength": 1},
+        "compression_method": {
+          "enum": ["action-method-result", "action-method-verified-capability"]
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/candidate"}
+        }
+      }
+    }
+  }
+}

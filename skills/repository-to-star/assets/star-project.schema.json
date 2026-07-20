@@ -1,0 +1,356 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/verified-project-resume/star-project.schema.json",
+  "title": "Verified Project STAR Archive",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project",
+    "analysis_scope",
+    "identity",
+    "evidence",
+    "claims",
+    "contributions",
+    "metrics",
+    "star",
+    "open_questions",
+    "interview_topics",
+    "execution_log"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "repo_root", "revision", "repository_kind", "remote_url"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "repo_root": {"type": "string", "minLength": 1},
+        "revision": {"type": "string"},
+        "repository_kind": {
+          "enum": ["course", "personal", "team", "open-source", "unknown"]
+        },
+        "remote_url": {"type": ["string", "null"]}
+      }
+    },
+    "analysis_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_date",
+        "end_date",
+        "starter_ref",
+        "upstream_ref",
+        "github_availability",
+        "execution_policy",
+        "collected_at"
+      ],
+      "properties": {
+        "start_date": {"type": ["string", "null"]},
+        "end_date": {"type": ["string", "null"]},
+        "starter_ref": {"type": ["string", "null"]},
+        "upstream_ref": {"type": ["string", "null"]},
+        "github_availability": {
+          "enum": ["collected", "unavailable", "not-requested", "failed"]
+        },
+        "execution_policy": {"const": "ask-before-execute"},
+        "collected_at": {"type": "string", "minLength": 1}
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["names", "emails", "github_handle", "status"],
+      "properties": {
+        "names": {"type": "array", "items": {"type": "string"}},
+        "emails": {"type": "array", "items": {"type": "string"}},
+        "github_handle": {"type": ["string", "null"]},
+        "status": {"enum": ["confirmed", "partial", "missing"]}
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/evidence"}
+    },
+    "claims": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/claim"}
+    },
+    "contributions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/contribution"}
+    },
+    "metrics": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/metric"}
+    },
+    "star": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["situation", "task", "action", "result"],
+      "properties": {
+        "situation": {"type": "array", "items": {"$ref": "#/$defs/starItem"}},
+        "task": {"type": "array", "items": {"$ref": "#/$defs/starItem"}},
+        "action": {"type": "array", "items": {"$ref": "#/$defs/starItem"}},
+        "result": {"type": "array", "items": {"$ref": "#/$defs/starItem"}}
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "question", "affects_claim_ids", "status"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "question": {"type": "string", "minLength": 1},
+          "affects_claim_ids": {"type": "array", "items": {"type": "string"}},
+          "status": {"enum": ["open", "answered", "not-applicable"]}
+        }
+      }
+    },
+    "interview_topics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "topic", "claim_ids", "questions"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "topic": {"type": "string", "minLength": 1},
+          "claim_ids": {"type": "array", "items": {"type": "string"}},
+          "questions": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "execution_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "command",
+          "cwd",
+          "approval",
+          "status",
+          "exit_code",
+          "stdout_path",
+          "stderr_path",
+          "timestamp"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "kind": {"enum": ["collection", "test", "benchmark", "github"]},
+          "command": {"type": ["string", "null"]},
+          "cwd": {"type": ["string", "null"]},
+          "approval": {"enum": ["not-required", "approved", "declined", "not-requested"]},
+          "status": {"enum": ["completed", "failed", "declined", "unavailable", "not-requested"]},
+          "exit_code": {"type": ["integer", "null"]},
+          "stdout_path": {"type": ["string", "null"]},
+          "stderr_path": {"type": ["string", "null"]},
+          "timestamp": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "availability",
+        "title",
+        "locator",
+        "digest_basis",
+        "sha256",
+        "excerpt",
+        "collected_at"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type": {
+          "enum": [
+            "file",
+            "symbol",
+            "test",
+            "benchmark",
+            "commit",
+            "diff",
+            "issue",
+            "pr",
+            "review",
+            "ci",
+            "user-confirmation",
+            "upstream",
+            "dependency",
+            "generated-code"
+          ]
+        },
+        "availability": {
+          "enum": ["collected", "unavailable", "not-requested", "failed"]
+        },
+        "title": {"type": "string", "minLength": 1},
+        "locator": {"type": "object"},
+        "digest_basis": {
+          "enum": ["file-bytes", "canonical-record", "user-confirmation-text", "not-applicable"]
+        },
+        "sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "excerpt": {"type": ["string", "null"]},
+        "collected_at": {"type": "string", "minLength": 1}
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text",
+        "scope",
+        "status",
+        "ownership_level",
+        "action_kind",
+        "tags",
+        "evidence_ids",
+        "confidence",
+        "confidence_reason",
+        "resume_eligible"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "text": {"type": "string", "minLength": 1},
+        "scope": {
+          "enum": [
+            "project",
+            "user-sole",
+            "user-partial",
+            "team",
+            "starter",
+            "third-party",
+            "generated",
+            "unknown"
+          ]
+        },
+        "status": {
+          "enum": ["verified", "user-confirmed", "inferred", "unknown", "contradicted"]
+        },
+        "ownership_level": {
+          "enum": ["sole", "lead", "shared", "contributor", "none", "unknown"]
+        },
+        "action_kind": {
+          "enum": [
+            "designed",
+            "implemented",
+            "integrated",
+            "configured",
+            "called",
+            "tested",
+            "debugged",
+            "optimized",
+            "documented",
+            "reviewed",
+            "none"
+          ]
+        },
+        "tags": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "confidence": {"enum": ["high", "medium", "low"]},
+        "confidence_reason": {"type": "string", "minLength": 1},
+        "resume_eligible": {"type": "boolean"}
+      }
+    },
+    "contribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "summary",
+        "claim_ids",
+        "evidence_ids",
+        "paths",
+        "symbols",
+        "commit_ids"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "summary": {"type": "string", "minLength": 1},
+        "claim_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "paths": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "symbols": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "commit_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "status",
+        "value",
+        "unit",
+        "baseline",
+        "result",
+        "measurement_method",
+        "evidence_ids",
+        "resume_eligible"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["performance", "count", "scale", "duration", "business", "other"]},
+        "status": {
+          "enum": [
+            "verified-measured",
+            "verified-count",
+            "documented-unverified",
+            "user-confirmed",
+            "theoretical",
+            "target",
+            "planned",
+            "unknown"
+          ]
+        },
+        "value": {"type": ["string", "number", "null"]},
+        "unit": {"type": ["string", "null"]},
+        "baseline": {"type": ["string", "number", "null"]},
+        "result": {"type": ["string", "number", "null"]},
+        "measurement_method": {"type": ["string", "null"]},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "resume_eligible": {"type": "boolean"}
+      }
+    },
+    "starItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text",
+        "claim_ids",
+        "evidence_ids",
+        "metric_ids",
+        "status",
+        "resume_eligible"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "text": {"type": "string", "minLength": 1},
+        "claim_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+        "metric_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "status": {"enum": ["verified", "user-confirmed", "inferred", "unknown", "contradicted"]},
+        "resume_eligible": {"type": "boolean"}
+      }
+    }
+  }
+}

@@ -1,0 +1,371 @@
+{
+  "schema_version": "1.0.0",
+  "source_archive": {
+    "path": "/home/chq/Documents/Codex/2026-07-20/agent-skills-codex-claude-code-github/verified-project-resume/examples/synthetic-demo/star-project.json",
+    "sha256": "1a735da1189b4f9c7e4b2d78c0b228ddc78486217d5313f36cc6c401c221bac9"
+  },
+  "settings": {
+    "target_role": "systems engineer",
+    "languages": [
+      "zh-CN",
+      "en"
+    ],
+    "bullet_count": 3,
+    "focus": "correctness and measured performance"
+  },
+  "project_summaries": [
+    {
+      "language": "zh-CN",
+      "text": "基于课程 starter 扩展的索引项目，包含解析、持久化与缓存能力。",
+      "claim_ids": [
+        "c-project"
+      ],
+      "evidence_ids": [
+        "ev-starter",
+        "ev-dependency"
+      ],
+      "metric_ids": []
+    },
+    {
+      "language": "en",
+      "text": "A course index extending a supplied starter with parsing, persistence, and caching capabilities.",
+      "claim_ids": [
+        "c-project"
+      ],
+      "evidence_ids": [
+        "ev-starter",
+        "ev-dependency"
+      ],
+      "metric_ids": []
+    }
+  ],
+  "candidate_groups": [
+    {
+      "semantic_group_id": "parser-latency",
+      "compression_method": "action-method-result",
+      "variants": [
+        {
+          "id": "parser-latency-zh-CN",
+          "language": "zh-CN",
+          "text": "在分配的解析模块中实现有界 token 解析，通过固定合成输入将延迟从 20 ms 降至 10 ms。",
+          "clauses": {
+            "action": {
+              "text": "实现有界 token 解析",
+              "claim_ids": [
+                "c-parser"
+              ],
+              "evidence_ids": [
+                "ev-parser-diff"
+              ],
+              "metric_ids": []
+            },
+            "method": {
+              "text": "使用固定合成输入验证解析路径",
+              "claim_ids": [
+                "c-parser"
+              ],
+              "evidence_ids": [
+                "ev-parser-diff"
+              ],
+              "metric_ids": []
+            },
+            "result": {
+              "text": "延迟从 20 ms 降至 10 ms",
+              "claim_ids": [
+                "c-parser"
+              ],
+              "evidence_ids": [
+                "ev-parser-diff",
+                "ev-benchmark"
+              ],
+              "metric_ids": [
+                "m-latency"
+              ]
+            }
+          },
+          "interview_questions": [
+            "What did the cited diff change?",
+            "What are the evidence limits?"
+          ],
+          "risk_flags": [],
+          "submittable": true
+        },
+        {
+          "id": "parser-latency-en",
+          "language": "en",
+          "text": "Implemented bounded token parsing in the assigned module, reducing fixed-fixture latency from 20 ms to 10 ms under the recorded benchmark method.",
+          "clauses": {
+            "action": {
+              "text": "Implemented bounded token parsing",
+              "claim_ids": [
+                "c-parser"
+              ],
+              "evidence_ids": [
+                "ev-parser-diff"
+              ],
+              "metric_ids": []
+            },
+            "method": {
+              "text": "Used a fixed synthetic input under the recorded method",
+              "claim_ids": [
+                "c-parser"
+              ],
+              "evidence_ids": [
+                "ev-parser-diff"
+              ],
+              "metric_ids": []
+            },
+            "result": {
+              "text": "Reduced latency from 20 ms to 10 ms",
+              "claim_ids": [
+                "c-parser"
+              ],
+              "evidence_ids": [
+                "ev-parser-diff",
+                "ev-benchmark"
+              ],
+              "metric_ids": [
+                "m-latency"
+              ]
+            }
+          },
+          "interview_questions": [
+            "What did the cited diff change?",
+            "What are the evidence limits?"
+          ],
+          "risk_flags": [],
+          "submittable": true
+        }
+      ]
+    },
+    {
+      "semantic_group_id": "storage-tests",
+      "compression_method": "action-method-verified-capability",
+      "variants": [
+        {
+          "id": "storage-tests-zh-CN",
+          "language": "zh-CN",
+          "text": "通过现有存储封装集成 SQLite，并用 12 项确定性测试验证解析与存储边界。",
+          "clauses": {
+            "action": {
+              "text": "集成 SQLite",
+              "claim_ids": [
+                "c-integration"
+              ],
+              "evidence_ids": [
+                "ev-dependency"
+              ],
+              "metric_ids": []
+            },
+            "method": {
+              "text": "通过现有存储封装并编写边界测试",
+              "claim_ids": [
+                "c-integration",
+                "c-tests"
+              ],
+              "evidence_ids": [
+                "ev-dependency",
+                "ev-test"
+              ],
+              "metric_ids": []
+            },
+            "result": {
+              "text": "通过 12 项确定性测试",
+              "claim_ids": [
+                "c-tests"
+              ],
+              "evidence_ids": [
+                "ev-test"
+              ],
+              "metric_ids": [
+                "m-tests"
+              ]
+            }
+          },
+          "interview_questions": [
+            "What did the cited diff change?",
+            "What are the evidence limits?"
+          ],
+          "risk_flags": [],
+          "submittable": true
+        },
+        {
+          "id": "storage-tests-en",
+          "language": "en",
+          "text": "Integrated SQLite through the existing storage wrapper and validated parser and storage boundaries with 12 deterministic tests.",
+          "clauses": {
+            "action": {
+              "text": "Integrated SQLite",
+              "claim_ids": [
+                "c-integration"
+              ],
+              "evidence_ids": [
+                "ev-dependency"
+              ],
+              "metric_ids": []
+            },
+            "method": {
+              "text": "Used the existing wrapper and added boundary tests",
+              "claim_ids": [
+                "c-integration",
+                "c-tests"
+              ],
+              "evidence_ids": [
+                "ev-dependency",
+                "ev-test"
+              ],
+              "metric_ids": []
+            },
+            "result": {
+              "text": "Passed 12 deterministic tests",
+              "claim_ids": [
+                "c-tests"
+              ],
+              "evidence_ids": [
+                "ev-test"
+              ],
+              "metric_ids": [
+                "m-tests"
+              ]
+            }
+          },
+          "interview_questions": [
+            "What did the cited diff change?",
+            "What are the evidence limits?"
+          ],
+          "risk_flags": [],
+          "submittable": true
+        }
+      ]
+    },
+    {
+      "semantic_group_id": "cache-fix",
+      "compression_method": "action-method-verified-capability",
+      "variants": [
+        {
+          "id": "cache-fix-zh-CN",
+          "language": "zh-CN",
+          "text": "定位并修复队友模块中的缓存失效缺陷，通过回归测试确认目标错误路径已消除。",
+          "clauses": {
+            "action": {
+              "text": "定位并修复缓存失效缺陷",
+              "claim_ids": [
+                "c-fix"
+              ],
+              "evidence_ids": [
+                "ev-fix-diff",
+                "ev-test"
+              ],
+              "metric_ids": []
+            },
+            "method": {
+              "text": "限制修改范围并执行回归测试",
+              "claim_ids": [
+                "c-fix"
+              ],
+              "evidence_ids": [
+                "ev-fix-diff",
+                "ev-test"
+              ],
+              "metric_ids": []
+            },
+            "result": {
+              "text": "确认目标错误路径已消除",
+              "claim_ids": [
+                "c-fix"
+              ],
+              "evidence_ids": [
+                "ev-fix-diff",
+                "ev-test"
+              ],
+              "metric_ids": []
+            }
+          },
+          "interview_questions": [
+            "What did the cited diff change?",
+            "What are the evidence limits?"
+          ],
+          "risk_flags": [],
+          "submittable": true
+        },
+        {
+          "id": "cache-fix-en",
+          "language": "en",
+          "text": "Debugged and fixed cache invalidation in a module implemented by a teammate, using regression tests to confirm the targeted failure path was eliminated.",
+          "clauses": {
+            "action": {
+              "text": "Debugged and fixed cache invalidation",
+              "claim_ids": [
+                "c-fix"
+              ],
+              "evidence_ids": [
+                "ev-fix-diff",
+                "ev-test"
+              ],
+              "metric_ids": []
+            },
+            "method": {
+              "text": "Kept the change scoped and ran regression tests",
+              "claim_ids": [
+                "c-fix"
+              ],
+              "evidence_ids": [
+                "ev-fix-diff",
+                "ev-test"
+              ],
+              "metric_ids": []
+            },
+            "result": {
+              "text": "Confirmed the targeted failure path was eliminated",
+              "claim_ids": [
+                "c-fix"
+              ],
+              "evidence_ids": [
+                "ev-fix-diff",
+                "ev-test"
+              ],
+              "metric_ids": []
+            }
+          },
+          "interview_questions": [
+            "What did the cited diff change?",
+            "What are the evidence limits?"
+          ],
+          "risk_flags": [],
+          "submittable": true
+        }
+      ]
+    }
+  ],
+  "excluded_claims": [
+    {
+      "claim_id": "c-starter",
+      "reason": "Starter functionality is not a user contribution."
+    },
+    {
+      "claim_id": "c-team-architecture",
+      "reason": "Valid team context, but not selected for the concise candidate set."
+    },
+    {
+      "claim_id": "c-confirmed-role",
+      "reason": "Qualitative responsibility is supported but redundant with the selected parser action."
+    },
+    {
+      "claim_id": "c-planned",
+      "reason": "Future target is inferred and unmeasured."
+    },
+    {
+      "claim_id": "c-production",
+      "reason": "Production reliability is unknown."
+    }
+  ],
+  "warnings": [
+    "Measured latency applies only to the fixed synthetic fixture."
+  ],
+  "guard": {
+    "version": "1.0.0",
+    "status": "pass",
+    "errors": [],
+    "checked_at": "2026-07-20T00:00:00Z"
+  }
+}

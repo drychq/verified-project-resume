@@ -1,0 +1,6 @@
+interface:
+  display_name: "Repository to STAR"
+  short_description: "Build evidence-backed STAR dossiers from code repositories"
+  default_prompt: "Use $repository-to-star to build a verified STAR dossier from this repository."
+policy:
+  allow_implicit_invocation: false

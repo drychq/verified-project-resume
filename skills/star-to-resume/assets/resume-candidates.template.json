@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0.0",
+  "source_archive": {
+    "path": "/absolute/path/to/star-project.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "settings": {
+    "target_role": null,
+    "languages": ["zh-CN"],
+    "bullet_count": 3,
+    "focus": null
+  },
+  "project_summaries": [],
+  "candidate_groups": [],
+  "excluded_claims": [],
+  "warnings": [],
+  "guard": {
+    "version": "1.0.0",
+    "status": "draft",
+    "errors": [],
+    "checked_at": null
+  }
+}
