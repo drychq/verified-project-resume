@@ -1,5 +1,7 @@
 # Verified Project Resume
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 `verified-project-resume` is a local-first Codex plugin containing two deliberately separate Agent Skills:
 
 - `$repository-to-star`: inspect one real repository and produce an evidence-linked STAR project archive;
