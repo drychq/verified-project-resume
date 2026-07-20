@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-`verified-project-resume` 是一个本地优先的 Codex 插件，包含两个职责严格分离的 Agent Skill：
+`verified-project-resume` 是一个厂商中立、本地优先的 Agent Skills 包。它以两个职责严格分离的 Skill 作为可移植核心：
 
 - `$repository-to-star`：检查真实软件仓库，生成带证据引用的完整 STAR 项目档案；
 - `$star-to-resume`：只从已验证的 STAR 档案中提取事实，压缩为经过安全检查的技术简历候选条目。
@@ -20,25 +20,28 @@
 ## 仓库结构
 
 ```text
-.codex-plugin/plugin.json
 skills/
   repository-to-star/
     SKILL.md
-    agents/openai.yaml
     assets/
     references/
     scripts/repo_evidence.py
+    agents/openai.yaml       # 可选 Codex/OpenAI 元数据
   star-to-resume/
     SKILL.md
-    agents/openai.yaml
     assets/
     references/
     scripts/resume_guard.py
+    agents/openai.yaml       # 可选 Codex/OpenAI 元数据
+.codex-plugin/plugin.json    # 可选 Codex 适配层
 tests/
+docs/
 examples/synthetic-demo/
 ```
 
-两个 Skill 均禁用隐式调用。仓库审计可能耗时较长，而且普通的简历写作请求不应绕过证据采集阶段，因此必须通过名称显式调用。
+可选 Codex 适配层为两个 Skill 禁用了隐式调用；其他宿主如果支持相同策略，也应配置为仅显式调用。仓库审计可能耗时较长，而且普通的简历写作请求不应绕过证据采集阶段。
+
+`.codex-plugin/` 和各 Skill 下的 `agents/openai.yaml` 只是可选的 Codex 适配层，只提供发现和界面元数据。两个 Skill、Schema、确定性脚本和测试都不依赖 Codex 或 OpenAI SDK。
 
 ## 调用示例
 
@@ -81,11 +84,15 @@ python3 skills/star-to-resume/scripts/resume_guard.py validate-output --archive 
 
 测试套件会创建临时 Git 仓库，并且完全离线运行。它不会安装第三方包，也不会执行外部项目代码。
 
-## 可移植性
+## 宿主中立核心与可选适配层
 
-`skills/` 下的两个目录都是自包含的标准 Agent Skill，可以分别复制到客户端支持的 Skills 目录。确定性脚本需要 `python3`；本地历史采集还需要 `git`。GitHub 采集取决于宿主客户端提供的只读 GitHub 工具，没有这些工具时会进入受支持的降级模式。
+`skills/` 下的两个自包含目录是规范实现。可以将其中任意一个复制到兼容 Agent Skills 的宿主目录，也可以让宿主直接加载本仓库的 `skills/`。安装路径和调用语法由宿主决定；`$repository-to-star` 与 `$star-to-resume` 是支持 `$skill-name` 语法的宿主所使用的调用形式。
 
-本仓库只提供源码：它本身不会安装插件、修改个人 marketplace、绑定 MCP server，也不会写入用户级 Skills 目录。
+通用核心只需要本地文件/命令执行能力、Python 3.10+，以及用于本地历史采集的 Git。它不导入任何宿主 SDK，不要求 MCP server，并将只读 GitHub 集成视为可选增强。即使宿主没有 GitHub 集成、网络、测试、Benchmark，甚至仓库没有 `.git`，工作流也必须正常降级，把相关来源记为 `unavailable`，而不是解释成“不存在”。
+
+可移植性契约和适配层边界见[宿主集成说明](docs/host-integration.zh-CN.md)。
+
+本仓库只提供源码：它本身不会安装适配层、修改 marketplace、绑定 MCP server，也不会写入用户级 Skills 目录。
 
 ## 完整演示
 

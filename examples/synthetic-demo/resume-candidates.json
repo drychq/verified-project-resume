@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "source_archive": {
-    "path": "/home/chq/Documents/Codex/2026-07-20/agent-skills-codex-claude-code-github/verified-project-resume/examples/synthetic-demo/star-project.json",
+    "path": "examples/synthetic-demo/star-project.json",
     "sha256": "1a735da1189b4f9c7e4b2d78c0b228ddc78486217d5313f36cc6c401c221bac9"
   },
   "settings": {

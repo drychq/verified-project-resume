@@ -249,7 +249,25 @@ def command_git(args: argparse.Namespace) -> int:
         print(f"error: invalid identity file: {exc}", file=sys.stderr)
         return 2
 
-    probe = run_git(repo, ["rev-parse", "--show-toplevel"], check=False) if repo.is_dir() else None
+    try:
+        probe = run_git(repo, ["rev-parse", "--show-toplevel"], check=False) if repo.is_dir() else None
+    except FileNotFoundError:
+        write_json(out, {
+            "format_version": "1.0.0",
+            "repo_root": str(repo),
+            "collected_at": utc_now(),
+            "availability": "unavailable",
+            "reason": "git executable is unavailable",
+            "identity": identity,
+            "revision": None,
+            "remotes": [],
+            "initial_commits": [],
+            "commit_count": None,
+            "identity_commits": [],
+            "identity_commit_count": 0,
+            "baselines": [],
+        })
+        return 0
     is_target_root = (
         probe is not None
         and probe.returncode == 0

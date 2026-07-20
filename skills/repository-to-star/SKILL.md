@@ -1,6 +1,6 @@
 ---
 name: repository-to-star
-description: Analyze one real software repository and produce a complete, evidence-backed STAR project dossier without confusing project capabilities, starter code, dependencies, generated code, team work, or plans with the user's own contribution. Use when Codex must inspect source, README and design documents, tests, benchmarks, Git history, and optional GitHub issues or pull requests before creating interview material. Do not use to write final resume bullets; hand the validated archive to star-to-resume.
+description: Analyze one real software repository and produce a complete, evidence-backed STAR project dossier without confusing project capabilities, starter code, dependencies, generated code, team work, or plans with the user's own contribution. Use when an agent must inspect source, README and design documents, tests, benchmarks, Git history, and optional GitHub issues or pull requests before creating interview material. Do not use to write final resume bullets; hand the validated archive to star-to-resume.
 ---
 
 # Repository to STAR
@@ -13,7 +13,7 @@ Build a versioned `star-project.json` as the canonical fact source and render a 
 - Never infer personal ownership from project presence, file location, contributor counts, or technical complexity alone.
 - Never turn a dependency call into implementation of that dependency.
 - Never turn a test pass into production reliability, a target into an achieved result, or a theoretical benefit into a measurement.
-- Never generate resume bullets. Finish with the validated archive path and the exact next invocation for `$star-to-resume`.
+- Never generate resume bullets. Finish with the validated archive path and identify `star-to-resume` as the required next skill. Show `$star-to-resume` only when the host supports that invocation syntax.
 
 Read [evidence-policy.md](references/evidence-policy.md) before creating claims. Read [attribution-guide.md](references/attribution-guide.md) before assigning user scope. If tests or benchmarks exist, read [test-benchmark-policy.md](references/test-benchmark-policy.md). If GitHub evidence is available, read [github-evidence-contract.md](references/github-evidence-contract.md).
 
@@ -48,7 +48,7 @@ Inspect the resulting inventory, then read the relevant source, docs, tests, ben
 
 ### 3. Add optional GitHub evidence
 
-Prefer an available connected GitHub tool. Otherwise use authenticated `gh` read-only commands only after confirming access. Collect authored issues/PRs, changed files, reviews, merge SHA, linked commits, checks, and URLs using [github-evidence-contract.md](references/github-evidence-contract.md).
+Prefer an available host-provided read-only GitHub integration. Otherwise use authenticated `gh` read-only commands only after confirming access. Collect authored issues/PRs, changed files, reviews, merge SHA, linked commits, checks, and URLs using [github-evidence-contract.md](references/github-evidence-contract.md).
 
 If GitHub is unavailable, create an availability record with the reason. Do not silently omit the source and do not write to GitHub.
 
@@ -98,7 +98,7 @@ python3 <skill-dir>/scripts/repo_evidence.py validate --archive <output>/star-pr
 python3 <skill-dir>/scripts/repo_evidence.py render --archive <output>/star-project.json --out <output>/star-project.md
 ```
 
-Do not report completion unless validation exits zero. On failure, preserve the JSON and report every error. On success, report both paths and say:
+Do not report completion unless validation exits zero. On failure, preserve the JSON and report every error. On success, report both paths and identify the next skill. When the host supports `$skill-name` invocation, say:
 
 ```text
 Use $star-to-resume with <absolute-path>/star-project.json.

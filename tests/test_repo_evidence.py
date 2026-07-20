@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -45,6 +46,35 @@ class InventoryTests(unittest.TestCase):
             self.assertEqual(payload["availability"], "unavailable")
             self.assertEqual(payload["reason"], "path is not the root of a standalone Git work tree")
             self.assertEqual(payload["identity_commits"], [])
+
+    def test_git_collection_degrades_when_git_executable_is_unavailable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            identity = Path(directory) / "identity.json"
+            output = Path(directory) / "git.json"
+            write_json(identity, {"names": ["Student Dev"], "emails": [], "github_handle": None, "status": "partial"})
+            environment = os.environ.copy()
+            environment["PATH"] = ""
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "git",
+                    "--repo",
+                    str(NO_GIT_FIXTURE),
+                    "--identity",
+                    str(identity),
+                    "--out",
+                    str(output),
+                ],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=environment,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(payload["availability"], "unavailable")
+            self.assertEqual(payload["reason"], "git executable is unavailable")
 
 
 class GitEvidenceTests(unittest.TestCase):

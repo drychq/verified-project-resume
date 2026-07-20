@@ -8,7 +8,7 @@
 
 ## Collection policy
 
-Use connected GitHub tools when available. Fall back to authenticated `gh` read-only commands. Never create, edit, comment, label, close, merge, or otherwise mutate remote state during dossier construction.
+Use host-provided read-only GitHub integrations when available. Fall back to authenticated `gh` read-only commands. Never create, edit, comment, label, close, merge, or otherwise mutate remote state during dossier construction.
 
 Collect only the repository and identity in scope. Store source URLs so a reviewer can reopen every record.
 

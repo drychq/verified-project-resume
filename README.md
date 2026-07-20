@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-`verified-project-resume` is a local-first Codex plugin containing two deliberately separate Agent Skills:
+`verified-project-resume` is a vendor-neutral, local-first Agent Skills package. Its two deliberately separate skills form the portable core:
 
 - `$repository-to-star`: inspect one real repository and produce an evidence-linked STAR project archive;
 - `$star-to-resume`: compress only a validated archive into guarded resume candidates.
@@ -20,25 +20,28 @@ The canonical handoff is `star-project.json` with `schema_version: "1.0.0"`. Hum
 ## Repository layout
 
 ```text
-.codex-plugin/plugin.json
 skills/
   repository-to-star/
     SKILL.md
-    agents/openai.yaml
     assets/
     references/
     scripts/repo_evidence.py
+    agents/openai.yaml       # optional Codex/OpenAI metadata
   star-to-resume/
     SKILL.md
-    agents/openai.yaml
     assets/
     references/
     scripts/resume_guard.py
+    agents/openai.yaml       # optional Codex/OpenAI metadata
+.codex-plugin/plugin.json    # optional Codex adapter
 tests/
+docs/
 examples/synthetic-demo/
 ```
 
-Both skills disable implicit invocation. They are intended to be called explicitly because repository auditing can be expensive and because an ordinary resume-writing request must not bypass the evidence stage.
+The optional Codex adapter disables implicit invocation for both skills. Other hosts should configure explicit-only invocation when they support it. Repository auditing can be expensive, and an ordinary resume-writing request must not bypass the evidence stage.
+
+The files under `.codex-plugin/` and each `agents/openai.yaml` are an optional Codex adapter. They add discovery and UI metadata only; neither skill, schema, deterministic script, nor test depends on Codex or an OpenAI SDK.
 
 ## Example calls
 
@@ -81,11 +84,15 @@ python3 skills/star-to-resume/scripts/resume_guard.py validate-output --archive 
 
 The test suite creates temporary Git repositories and runs entirely offline. It does not install packages or run code from an external project.
 
-## Portability
+## Host-neutral core and optional adapters
 
-The two directories under `skills/` are self-contained standard Agent Skills. They can be copied independently to a client-supported Skills directory. The deterministic scripts require `python3` and, for local history collection, `git`. Optional GitHub collection depends on the host client's read-only GitHub tools; absence of those tools is a supported degraded mode.
+The two directories under `skills/` are self-contained standard Agent Skills and are the canonical implementation. Copy either directory to any Agent Skills-compatible host, or point the host at this repository's `skills/` directory. Invocation syntax and installation paths are host concerns; `$repository-to-star` and `$star-to-resume` are the names used by hosts that support `$skill-name` invocation.
 
-This repository is source-only: it does not install the plugin, modify a personal marketplace, bind an MCP server, or write to a user-level Skills directory.
+The core requires only local file/shell access, Python 3.10+, and Git for local history collection. It imports no host SDK, requires no MCP server, and treats optional read-only GitHub integration as an enhancement. A host without GitHub integration, network access, tests, benchmarks, or even `.git` remains a supported degraded mode and must record those sources as unavailable rather than absent.
+
+See [Host integration](docs/host-integration.md) for the portability contract and adapter boundaries.
+
+This repository is source-only: it does not install an adapter, modify a marketplace, bind an MCP server, or write to a user-level Skills directory.
 
 ## Demonstration
 

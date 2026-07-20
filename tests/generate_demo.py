@@ -38,6 +38,9 @@ def main() -> int:
 
     candidates_path = DEMO / "resume-candidates.json"
     candidates = make_candidates(archive_path, both=True, passed=True)
+    # Keep checked-in demonstration artifacts independent of the maintainer's
+    # workstation path. Runtime archives may still record an absolute path.
+    candidates["source_archive"]["path"] = "examples/synthetic-demo/star-project.json"
     write_json(candidates_path, candidates)
     candidate_errors = resume_module.validate_candidates(archive_path, archive, candidates)
     if candidate_errors:
