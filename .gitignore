@@ -1,4 +1,2 @@
-__pycache__/
-*.py[cod]
-.coverage
-.pytest_cache/
+# Local Codex conversation archives may contain sensitive session data.
+.codex-conversation-archive/
