@@ -2,100 +2,91 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-`verified-project-resume` is a vendor-neutral, local-first Agent Skills package. Its two deliberately separate skills form the portable core:
+`verified-project-resume` is one portable Agent Skill for turning a real software repository into a complete, evidence-backed STAR story library, a guarded resume candidate pool, and a concise role-specific project entry.
 
-- `$repository-to-star`: inspect one real repository and produce an evidence-linked STAR project archive;
-- `$star-to-resume`: compress only a validated archive into guarded resume candidates.
+The workflow stays ordered inside one installed skill:
+
+```text
+repository evidence → personal claims → detailed STAR stories → guarded candidate pool → job-specific selection
+```
+
+This prevents project capabilities, starter code, dependencies, generated code, team work, plans, and unverified metrics from becoming personal achievements. It also prevents resume writing from bypassing STAR.
 
 - Version: `0.1.0`
 - License: MIT
-- Runtime: Python 3.10+ standard library and Git
+- Runtime: Node.js 20+ standard library and Git
 
-## Why the boundary matters
+## Install
 
-Stage one determines what the project does, what the user actually changed, and what remains unknown. Stage two is not allowed to revisit or complete those facts. A supplied component, a dependency call, a teammate's module, a future target, or a remembered number therefore cannot silently become a personal achievement.
-
-The canonical handoff is `star-project.json` with `schema_version: "1.0.0"`. Human-readable Markdown is always rendered from validated JSON.
-
-## Repository layout
-
-```text
-skills/
-  repository-to-star/
-    SKILL.md
-    assets/
-    references/
-    scripts/repo_evidence.py
-    agents/openai.yaml       # optional Codex/OpenAI metadata
-  star-to-resume/
-    SKILL.md
-    assets/
-    references/
-    scripts/resume_guard.py
-    agents/openai.yaml       # optional Codex/OpenAI metadata
-.codex-plugin/plugin.json    # optional Codex adapter
-tests/
-docs/
-examples/synthetic-demo/
+```bash
+npx skills add drychq/verified-project-resume
 ```
 
-The optional Codex adapter disables implicit invocation for both skills. Other hosts should configure explicit-only invocation when they support it. Repository auditing can be expensive, and an ordinary resume-writing request must not bypass the evidence stage.
+Useful variants:
 
-The files under `.codex-plugin/` and each `agents/openai.yaml` are an optional Codex adapter. They add discovery and UI metadata only; neither skill, schema, deterministic script, nor test depends on Codex or an OpenAI SDK.
+```bash
+npx skills add drychq/verified-project-resume --list
+npx skills add drychq/verified-project-resume --skill verified-project-resume
+npx skills add drychq/verified-project-resume --agent codex
+npx skills add drychq/verified-project-resume --global
+npx skills add .
+```
 
-## Example calls
+The repository exposes exactly one skill under `skills/verified-project-resume/`. Copy that complete directory when using a host-native or offline installation; do not copy only `SKILL.md`.
 
-Stage one:
+## Use
+
+Full workflow:
 
 ```text
-Use $repository-to-star on /absolute/path/to/my-project.
+Use $verified-project-resume to analyze /absolute/path/to/my-project and write the workspace to /absolute/path/to/output.
 My Git identities are Name <name@example.com> and Name <school@example.edu>.
-The course starter is tag starter-v1. Write the archive to /absolute/path/to/output.
-Do not run tests or benchmarks unless I explicitly approve the exact command.
+The starter tag is starter-v1. Ask before running any test or benchmark.
+Target role: C++ systems engineer. Language: both.
 ```
 
-Stage two:
+Retarget verified material later:
 
 ```text
-Use $star-to-resume with /absolute/path/to/output/star-project.json.
-Target role: C++ systems engineer. Language: both. Generate 3 semantic bullet groups.
+Use $verified-project-resume with /absolute/path/to/output and tailor it to this new job description: ...
 ```
 
-## Safety behavior
-
-- Local inventory and Git inspection are read-only and do not execute project code.
-- GitHub evidence is optional; unavailable collection is not interpreted as absence.
-- Tests and benchmarks require separate approval after the exact command, working directory, and expected writes are shown.
-- User confirmation may support a narrow qualitative responsibility. It cannot make a remembered number resume-eligible.
-- Evidence declares a digest basis; validators recompute file bytes, canonical records, or exact user-confirmation text instead of accepting a SHA-shaped string.
-- Only `verified-measured` and `verified-count` metrics may enter candidate text.
-- The resume guard rejects unsupported numbers, ownership verbs, dependency escalation, performance comparisons, production/reliability/scale/causal language, archive hash changes, and bilingual source drift.
-- Failed candidates remain draft-only and receive a sibling `resume-candidates.guard-report.json`.
-
-## Local validation
-
-From this directory:
+Import an archive produced by the retired two-skill workflow:
 
 ```text
-python3 -m unittest discover -s tests -v
-python3 skills/repository-to-star/scripts/repo_evidence.py validate --archive examples/synthetic-demo/star-project.json
-python3 skills/star-to-resume/scripts/resume_guard.py validate-output --archive examples/synthetic-demo/star-project.json --candidates examples/synthetic-demo/resume-candidates.json
+Use $verified-project-resume to import /absolute/path/to/star-project.json into /absolute/path/to/output, review the regenerated STAR stories, and then tailor them to this role: ...
 ```
 
-The test suite creates temporary Git repositories and runs entirely offline. It does not install packages or run code from an external project.
+## Workspace interface
 
-## Host-neutral core and optional adapters
+Users work with a directory and four Markdown files:
 
-The two directories under `skills/` are self-contained standard Agent Skills and are the canonical implementation. Copy either directory to any Agent Skills-compatible host, or point the host at this repository's `skills/` directory. Invocation syntax and installation paths are host concerns; `$repository-to-star` and `$star-to-resume` are the names used by hosts that support `$skill-name` invocation.
+- `star.md`: every defensible contribution as a complete, detailed STAR story;
+- `resume-candidate-pool.md`: every candidate that passes the fact guard;
+- `resume.md`: one to four bullets selected after reading the target role or job description;
+- `review.md`: workflow acceptance, evidence gaps, warnings, questions, and exclusions.
 
-The core requires only local file/shell access, Python 3.10+, and Git for local history collection. It imports no host SDK, requires no MCP server, and treats optional read-only GitHub integration as an enhancement. A host without GitHub integration, network access, tests, benchmarks, or even `.git` remains a supported degraded mode and must record those sources as unavailable rather than absent.
+Machine state lives in `.verified-resume/ledger.jsonl`. It is private implementation data, not a user-managed cross-skill schema. New narrative sections and ranking metadata can evolve without an artifact version bump. The single skill reads and writes the ledger together and tolerates unknown optional fields.
 
-See [Host integration](docs/host-integration.md) for the portability contract and adapter boundaries.
+## Safety guarantees
 
-This repository is source-only: it does not install an adapter, modify a marketplace, bind an MCP server, or write to a user-level Skills directory.
+- Read-only inventory and Git collection never execute target project code.
+- GitHub lookup is optional and read-only.
+- Tests and benchmarks require exact-command approval and remain separate approvals.
+- Every admissible contribution must be covered by STAR or explicitly omitted with a reason.
+- Every candidate must trace through STAR to admissible claims, metrics, and evidence.
+- Only measured or deterministic verified metrics may appear as resume numbers.
+- Guards reject unsupported ownership verbs, dependency escalation, performance comparisons, production/reliability/scale/causal wording, source tampering, and bilingual source drift.
+- One supported story may produce one final bullet; the workflow never duplicates content to reach a minimum count.
 
-## Demonstration
+## Validate
 
-[`examples/synthetic-demo/star-project.md`](examples/synthetic-demo/star-project.md) and [`examples/synthetic-demo/resume-candidates.md`](examples/synthetic-demo/resume-candidates.md) show the complete handoff. The fixture deliberately contains starter functionality, a dependency integration, a teammate-owned module, an unverified README target, a verified benchmark, a test count, and a qualitative user confirmation so the exclusions are visible.
+```text
+npm test
+node skills/verified-project-resume/scripts/workspace.mjs validate --ledger examples/synthetic-demo/.verified-resume/ledger.jsonl --stage resume
+node skills/verified-project-resume/scripts/workspace.mjs render --ledger examples/synthetic-demo/.verified-resume/ledger.jsonl --workspace examples/synthetic-demo --stage resume
+```
 
-The demo is synthetic and is not evidence about a real person or production system.
+The test suite uses only Node.js built-ins, creates temporary Git repositories, and runs offline. It does not install packages or execute external project code.
+
+See [host integration](docs/host-integration.md) for portability requirements. The synthetic [STAR library](examples/synthetic-demo/star.md), [candidate pool](examples/synthetic-demo/resume-candidate-pool.md), [final resume](examples/synthetic-demo/resume.md), and [workflow review](examples/synthetic-demo/review.md) demonstrate the complete flow and do not represent a real person or project.
