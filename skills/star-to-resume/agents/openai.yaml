@@ -1,6 +1,0 @@
-interface:
-  display_name: "STAR to Resume"
-  short_description: "Compress verified STAR dossiers into factual resume bullets"
-  default_prompt: "Use $star-to-resume to turn this verified STAR dossier into resume bullets."
-policy:
-  allow_implicit_invocation: false

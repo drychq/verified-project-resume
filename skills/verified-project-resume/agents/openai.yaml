@@ -1,0 +1,6 @@
+interface:
+  display_name: "Verified Project Resume"
+  short_description: "Build evidence-backed STAR stories and tailored resumes"
+  default_prompt: "Use $verified-project-resume to audit this repository, build detailed STAR stories, and tailor verified resume bullets."
+policy:
+  allow_implicit_invocation: false
