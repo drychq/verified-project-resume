@@ -1,13 +1,5 @@
 # Test and benchmark evidence policy
 
-## Contents
-
-- Execution approval
-- Test evidence
-- Benchmark evidence
-- Metric classes
-- Result wording
-
 ## Execution approval
 
 Repository commands are opt-in. Before execution, show the exact command, working directory, expected duration, likely caches/build artifacts, and whether network access is needed. Approval is command-specific.

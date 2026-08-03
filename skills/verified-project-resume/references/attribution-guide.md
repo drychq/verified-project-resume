@@ -1,13 +1,5 @@
 # Contribution attribution guide
 
-## Contents
-
-- Identity matching
-- Diff-based attribution
-- Starter and upstream code
-- Team and Git edge cases
-- Dependencies and generated code
-
 ## Identity matching
 
 Match Git authors against all user-confirmed names and emails. Keep author and committer separate. Parse `Co-authored-by` trailers but do not infer the split of work between coauthors.

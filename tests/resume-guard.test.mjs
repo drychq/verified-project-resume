@@ -249,6 +249,36 @@ test('valid legacy import refuses to overwrite an existing private ledger', asyn
   assert.equal(await readFile(ledger, 'utf8'), 'SENTINEL\n');
 });
 
+test('resume stage requires a project overview per requested language', async () => {
+  const records = makeLedger();
+  const index = records.findIndex((item) => item.id === 'overview:en');
+  records.splice(index, 1);
+  assert.ok((await validateLedger(records)).some((error) => error.includes("missing project overview for language 'en'")));
+  assert.deepEqual(await validateLedger(makeLedger()), []);
+});
+
+test('project overview is guarded like any other resume text', async () => {
+  const records = makeLedger({ languages: ['en'] });
+  find(records, 'overview:en').data.text += ' serving 500 users in production';
+  const errors = await validateLedger(records);
+  assert.ok(errors.some((error) => error.includes("numeric token '500'")));
+  assert.ok(errors.some((error) => error.includes('production wording')));
+  const unsourced = makeLedger({ languages: ['en'] });
+  find(unsourced, 'overview:en').data.claim_ids = [];
+  find(unsourced, 'overview:en').data.evidence_ids = [];
+  assert.ok((await validateLedger(unsourced)).some((error) => error.includes('sourced text requires')));
+});
+
+test('rendered resume.md includes the project overview above the bullets', async (t) => {
+  const workspace = await temporary(t), records = makeLedger(), ledger = path.join(workspace, '.verified-resume', 'ledger.jsonl');
+  await writeLedger(ledger, records);
+  assert.deepEqual(await renderWorkspace(records, workspace), []);
+  const resume = await readFile(path.join(workspace, 'resume.md'), 'utf8');
+  assert.match(resume, /## Project overview/);
+  assert.ok(resume.indexOf('## Project overview') < resume.indexOf('## Selected bullets'));
+  assert.match(resume, /course index project/i);
+});
+
 test('workspace renderer writes the four public Markdown artifacts', async (t) => {
   const workspace = await temporary(t), records = makeLedger(), ledger = path.join(workspace, '.verified-resume', 'ledger.jsonl');
   await writeLedger(ledger, records);
@@ -267,4 +297,70 @@ test('invalid workspace replaces public artifacts with blocked notices', async (
   await stat(path.join(workspace, 'review.md'));
   for (const name of ['star.md', 'resume-candidate-pool.md', 'resume.md']) assert.match(await readFile(path.join(workspace, name), 'utf8'), /Not rendered because deterministic validation failed/);
   assert.doesNotMatch(await readFile(path.join(workspace, 'resume.md'), 'utf8'), /Stale valid-looking/);
+});
+
+test('validation never mutates ledger records', async () => {
+  const records = makeLedger();
+  records.push({ record_type: 'evidence', id: 'ev-artifact', data: { type: 'file', availability: 'collected', title: 'raw artifact', locator: { path: 'raw/artifact.bin' }, digest_basis: 'file-bytes', sha256: 'a'.repeat(64), excerpt: null, collected_at: '2026-07-20T00:00:00Z' }, refs: {} });
+  const before = structuredClone(records);
+  await validateLedger(records);
+  assert.deepEqual(records, before);
+  assert.ok(!JSON.stringify(records).includes('_resolved_path'));
+});
+
+test('file-bytes digests are verified only when file verification is requested', async (t) => {
+  const workspace = await temporary(t), artifact = path.join(workspace, 'artifact.bin');
+  await writeFile(artifact, 'payload', 'utf8');
+  const records = makeLedger();
+  records.push({ record_type: 'evidence', id: 'ev-artifact', data: { type: 'file', availability: 'collected', title: 'raw artifact', locator: { path: artifact }, digest_basis: 'file-bytes', sha256: null, excerpt: null, collected_at: '2026-07-20T00:00:00Z' }, refs: {} });
+  await sealLedger(records);
+  assert.deepEqual(await validateLedger(records, { verifyFiles: true }), []);
+  await writeFile(artifact, 'tampered', 'utf8');
+  assert.deepEqual(await validateLedger(records), []);
+  assert.ok((await validateLedger(records, { verifyFiles: true })).some((error) => error.includes('file-bytes digest mismatch')));
+  await rm(artifact);
+  assert.ok((await validateLedger(records, { verifyFiles: true })).some((error) => error.includes('digest source file does not exist')));
+});
+
+test('relative file-bytes locator requires a project repo_root', async () => {
+  const relativeEvidence = { record_type: 'evidence', id: 'ev-artifact', data: { type: 'file', availability: 'collected', title: 'raw artifact', locator: { path: 'raw/artifact.bin' }, digest_basis: 'file-bytes', sha256: 'a'.repeat(64), excerpt: null, collected_at: '2026-07-20T00:00:00Z' }, refs: {} };
+  const records = makeLedger();
+  find(records, 'project:course-index').data.repo_root = null;
+  records.push(structuredClone(relativeEvidence));
+  assert.ok((await validateLedger(records)).some((error) => error.includes('requires a project repo_root')));
+  const sealRecords = makeLedger();
+  find(sealRecords, 'project:course-index').data.repo_root = null;
+  sealRecords.push({ ...structuredClone(relativeEvidence), data: { ...structuredClone(relativeEvidence).data, sha256: null } });
+  await assert.rejects(sealLedger(sealRecords), /requires a project repo_root/);
+});
+
+test('bilingual project overviews must use identical sources', async () => {
+  const records = makeLedger();
+  const overview = find(records, 'overview:en');
+  overview.data.claim_ids = ['claim-storage']; overview.data.evidence_ids = ['ev-storage'];
+  overview.refs.claim_ids = ['claim-storage']; overview.refs.evidence_ids = ['ev-storage'];
+  assert.ok((await validateLedger(records)).some((error) => error.includes('overview: bilingual variants must use identical sources')));
+});
+
+test('project overview refs must mirror data sources', async () => {
+  const records = makeLedger({ languages: ['en'] });
+  find(records, 'overview:en').refs.claim_ids = [];
+  assert.ok((await validateLedger(records)).some((error) => error.includes('refs must mirror data sources')));
+});
+
+test('workspace CLI rejects unknown flags and invalid stages and answers help/version', async (t) => {
+  assert.equal(await main(['validate', '--stag', 'resume']), 2);
+  assert.equal(await main(['bogus-command']), 2);
+  const workspace = await temporary(t), ledger = path.join(workspace, '.verified-resume', 'ledger.jsonl');
+  await writeLedger(ledger, makeLedger());
+  assert.equal(await main(['validate', '--ledger', ledger, '--stage', 'bogus']), 2);
+  assert.equal(await main(['validate', '--ledger', ledger, '--stage', 'resume']), 0);
+  assert.equal(await main(['--help']), 0);
+  assert.equal(await main(['--version']), 0);
+});
+
+test('malformed legacy archive JSON fails as a usage error naming the file', async (t) => {
+  const workspace = await temporary(t), archive = path.join(workspace, 'broken.json');
+  await writeFile(archive, '{not json', 'utf8');
+  assert.equal(await main(['import-legacy', '--archive', archive, '--workspace', workspace]), 2);
 });

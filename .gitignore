@@ -1,2 +1,6 @@
 # Local Codex conversation archives may contain sensitive session data.
 .codex-conversation-archive/
+
+# Node artifacts; the project itself has zero dependencies.
+node_modules/
+package-lock.json

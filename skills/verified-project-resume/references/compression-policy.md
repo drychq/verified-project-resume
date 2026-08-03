@@ -1,13 +1,5 @@
 # STAR compression policy
 
-## Contents
-
-- Admission
-- Selection
-- Compression forms
-- Source mapping
-- Target-role tailoring
-
 ## Admission
 
 Admit only qualitative claims with `verified` or `user-confirmed` status and `resume_eligible: true`. Admit numeric values only from `verified-measured` or `verified-count` metrics marked eligible, or exact numeric text already present in an admissible claim.
@@ -32,6 +24,8 @@ Use `Action → Method/Decision → Verified Result` when a result is directly s
 Use `Action → Method/Decision → Verified Capability/Test/Correctness` when no admissible measurement exists.
 
 Do not force XYZ when Y is absent. A truthful capability or named test result is preferable to an estimate.
+
+The project overview is not a compressed bullet: it is one to two sentences of sourced text validated by the same deterministic guard, with no clause split and no compression method. Cite context-scope claims directly and mirror the cited IDs into its refs.
 
 ## Source mapping
 

@@ -8,6 +8,7 @@
 - [x] Candidate pool derives from STAR
 - [x] Final selection follows target role
 - [x] Final bullets are selected from the guarded pool
+- [x] Project overview derives from cited ledger sources
 - [x] User-facing artifacts require no schema handling
 
 ## Validation

@@ -1,33 +1,20 @@
 #!/usr/bin/env node
 /** Offline read-only repository inventory and Git evidence collection. */
 
-import { createHash } from 'node:crypto';
-import { closeSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, readlinkSync, readSync, statSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
+import { lstatSync, readdirSync, readlinkSync, statSync } from 'node:fs';
+import { basename, extname, join, relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
+
+import { VERSION, absolutePath, parseCommandArgs, readJson, sha256File, utcNow, writeJson } from './lib/common.mjs';
 
 const DOC_NAMES = new Set(['readme', 'license', 'changelog', 'contributing', 'authors', 'design', 'architecture']);
 const BUILD_NAMES = new Set(['cmakelists.txt', 'makefile', 'meson.build', 'build.gradle', 'pom.xml', 'package.json', 'pyproject.toml', 'setup.py', 'cargo.toml', 'go.mod', 'build.zig', 'justfile']);
 const DEPENDENCY_NAMES = new Set(['requirements.txt', 'poetry.lock', 'pdm.lock', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'cargo.lock', 'go.sum', 'vcpkg.json', 'conanfile.txt', 'conanfile.py']);
 const SOURCE_EXTENSIONS = new Set(['.c', '.cc', '.cpp', '.cxx', '.h', '.hh', '.hpp', '.hxx', '.m', '.mm', '.py', '.rs', '.go', '.java', '.kt', '.kts', '.cs', '.js', '.jsx', '.ts', '.tsx', '.vue', '.swift', '.scala', '.sql', '.proto', '.glsl', '.vert', '.frag', '.comp', '.qml']);
 
-function expandUser(value) { return value === '~' ? homedir() : value.startsWith('~/') ? join(homedir(), value.slice(2)) : value; }
-function absolutePath(value) { return resolve(expandUser(value)); }
-function utcNow() { return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'); }
-function loadJson(filename) { return JSON.parse(readFileSync(filename, 'utf8')); }
-function writeJson(filename, value) { mkdirSync(dirname(filename), { recursive: true }); writeFileSync(filename, `${JSON.stringify(value, null, 2)}\n`, 'utf8'); }
-
-export function sha256File(filename) {
-  const digest = createHash('sha256'), descriptor = openSync(filename, 'r'), buffer = Buffer.allocUnsafe(1024 * 1024);
-  try { for (;;) { const length = readSync(descriptor, buffer, 0, buffer.length, null); if (!length) break; digest.update(buffer.subarray(0, length)); } }
-  finally { closeSync(descriptor); }
-  return digest.digest('hex');
-}
-
-export function classifyFile(relativePath) {
+function classifyFile(relativePath) {
   const lower = relativePath.toLowerCase(), parts = lower.split('/'), name = parts.at(-1), suffix = extname(name), stem = basename(name, suffix);
   if (parts.some((part) => ['vendor', 'vendors', 'third_party', 'third-party', 'external', 'extern'].includes(part))) return ['vendor', 'path identifies bundled third-party code'];
   if (parts.some((part) => ['generated', 'gen', 'autogen'].includes(part)) || name.endsWith('.generated.h') || name.endsWith('.generated.cpp')) return ['generated', 'path or filename identifies generated code'];
@@ -70,7 +57,7 @@ export function commandInventory(args) {
   return 0;
 }
 
-export function runGit(repo, parameters, check = true) {
+function runGit(repo, parameters, check = true) {
   const result = spawnSync('git', ['-C', repo, ...parameters], { encoding: 'utf8', env: { ...process.env }, shell: false });
   if (result.error) throw result.error;
   const completed = { returncode: result.status ?? 1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
@@ -78,8 +65,8 @@ export function runGit(repo, parameters, check = true) {
   return completed;
 }
 
-export function parseIdentity(filename) {
-  const raw = loadJson(filename), names = raw?.names ?? [], emails = raw?.emails ?? [];
+function parseIdentity(filename) {
+  const raw = readJson(filename), names = raw?.names ?? [], emails = raw?.emails ?? [];
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !Array.isArray(names) || !names.every((value) => typeof value === 'string') || !Array.isArray(emails) || !emails.every((value) => typeof value === 'string')) throw new Error('identity requires string arrays names and emails');
   const normalize = (values) => [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
   return { names: normalize(names), emails: normalize(emails), github_handle: raw.github_handle ?? null, status: raw.status ?? (names.length || emails.length ? 'partial' : 'missing') };
@@ -92,21 +79,37 @@ function identityMatches(name, email, identity) {
   return reasons;
 }
 
+// Splits git's "prefix{old => new}suffix" and plain "old => new" rename syntax into joinable paths.
+function parseRenamePath(value) {
+  const brace = value.match(/^(.*)\{(.*) => (.*)\}(.*)$/);
+  if (brace) {
+    const compose = (segment) => (brace[1] + segment + brace[4]).replaceAll('//', '/');
+    return { path: compose(brace[3]), previous_path: compose(brace[2]) };
+  }
+  const arrow = value.split(' => ');
+  if (arrow.length === 2) return { path: arrow[1], previous_path: arrow[0] };
+  return { path: value, previous_path: null };
+}
+
 function parseNumstat(text) {
   const output = [];
   for (const line of text.split(/\r?\n/)) {
-    const parts = line.split('\t', 3); if (parts.length !== 3) continue;
-    output.push({ path: parts[2], added_lines: parts[0] === '-' ? null : Number.parseInt(parts[0], 10), deleted_lines: parts[1] === '-' ? null : Number.parseInt(parts[1], 10) });
+    const parts = line.split('\t'); if (parts.length < 3) continue;
+    output.push({ ...parseRenamePath(parts.slice(2).join('\t')), added_lines: parts[0] === '-' ? null : Number.parseInt(parts[0], 10), deleted_lines: parts[1] === '-' ? null : Number.parseInt(parts[1], 10) });
   }
   return output;
 }
 
+const COAUTHOR_RE = /^Co-authored-by:\s*(.*?)\s*<([^>]+)>\s*$/gim;
+
 function commitDetails(repo, sha) {
-  const fields = runGit(repo, ['show', '-s', '--format=%H%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%cn%x1f%ce%x1f%cI%x1f%s%x1f%b', sha]).stdout.replace(/\n$/, '').split('\x1f', 10);
-  if (fields.length !== 10) throw new Error(`could not parse commit metadata for ${sha}`);
-  const coauthors = [...fields[9].matchAll(/^Co-authored-by:\s*(.*?)\s*<([^>]+)>\s*$/gim)].map((match) => ({ name: match[1].trim(), email: match[2].trim() }));
+  // The body is the final field, so any field separator inside it must be rejoined, not truncated.
+  const fields = runGit(repo, ['show', '-s', '--format=%H%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%cn%x1f%ce%x1f%cI%x1f%s%x1f%b', sha]).stdout.replace(/\n$/, '').split('\x1f');
+  if (fields.length < 10) throw new Error(`could not parse commit metadata for ${sha}`);
+  const body = fields.slice(9).join('\x1f');
+  const coauthors = [...body.matchAll(COAUTHOR_RE)].map((match) => ({ name: match[1].trim(), email: match[2].trim() }));
   return {
-    sha: fields[0], parents: fields[1] ? fields[1].split(/\s+/) : [], author: { name: fields[2], email: fields[3], date: fields[4] }, committer: { name: fields[5], email: fields[6], date: fields[7] }, subject: fields[8], body: fields[9].trimEnd(), coauthors,
+    sha: fields[0], parents: fields[1] ? fields[1].split(/\s+/) : [], author: { name: fields[2], email: fields[3], date: fields[4] }, committer: { name: fields[5], email: fields[6], date: fields[7] }, subject: fields[8], body: body.trimEnd(), coauthors,
     is_merge: Boolean(fields[1] && fields[1].split(/\s+/).length > 1),
     changed_files: parseNumstat(runGit(repo, ['show', '--format=', '--numstat', '--find-renames', sha]).stdout),
     hunk_headers: runGit(repo, ['show', '--format=', '--unified=0', '--find-renames', sha]).stdout.split(/\r?\n/).filter((line) => line.startsWith('@@')),
@@ -140,9 +143,10 @@ export function commandGit(args) {
   if (args.start_date) logArgs.push(`--since=${args.start_date}`); if (args.end_date) logArgs.push(`--until=${args.end_date}`);
   const matched = [];
   for (const raw of runGit(repo, logArgs).stdout.split('\x1e')) {
-    const fields = raw.replace(/^\n+|\n+$/g, '').split('\x1f', 5); if (fields.length !== 5) continue;
+    const fields = raw.replace(/^\n+|\n+$/g, '').split('\x1f'); if (fields.length < 5) continue;
+    const body = fields.slice(4).join('\x1f');
     const reasons = identityMatches(fields[1], fields[2], identity);
-    for (const match of fields[4].matchAll(/^Co-authored-by:\s*(.*?)\s*<([^>]+)>\s*$/gim)) for (const reason of identityMatches(match[1], match[2], identity)) { const value = reason.replace('author-', 'coauthor-'); if (!reasons.includes(value)) reasons.push(value); }
+    for (const match of body.matchAll(COAUTHOR_RE)) for (const reason of identityMatches(match[1], match[2], identity)) { const value = reason.replace('author-', 'coauthor-'); if (!reasons.includes(value)) reasons.push(value); }
     if (reasons.length) { const details = commitDetails(repo, fields[0]); details.identity_match_reasons = reasons; matched.push(details); }
   }
   const baselines = []; if (args.starter_ref) baselines.push(baseline(repo, args.starter_ref, head, 'starter')); if (args.upstream_ref) baselines.push(baseline(repo, args.upstream_ref, head, 'upstream'));
@@ -155,14 +159,38 @@ export function commandGit(args) {
   return 0;
 }
 
-const COMMANDS = { inventory: { fn: commandInventory, required: ['repo', 'out'], optional: [] }, git: { fn: commandGit, required: ['repo', 'identity', 'out'], optional: ['start_date', 'end_date', 'starter_ref', 'upstream_ref'] } };
-export function parseArgs(argv) {
-  const [command, ...tokens] = argv, spec = COMMANDS[command]; if (!spec) throw new Error(`argument command: invalid choice '${command}'`);
-  const allowed = new Set([...spec.required, ...spec.optional]), args = { command };
-  for (let index = 0; index < tokens.length; index += 2) { const option = tokens[index], key = option?.slice(2).replaceAll('-', '_'); if (!option?.startsWith('--') || !allowed.has(key) || index + 1 >= tokens.length) throw new Error(`unrecognized or incomplete argument: ${option ?? ''}`); args[key] = tokens[index + 1]; }
-  for (const key of spec.required) if (!args[key]) throw new Error(`required: --${key.replaceAll('_', '-')}`);
-  return args;
+const COMMANDS = {
+  inventory: { fn: commandInventory, required: ['repo', 'out'], optional: [] },
+  git: { fn: commandGit, required: ['repo', 'identity', 'out'], optional: ['start_date', 'end_date', 'starter_ref', 'upstream_ref'] },
+};
+
+const USAGE = 'usage: collect_evidence.mjs {inventory,git} ...';
+const HELP = `${USAGE}
+
+Offline read-only repository inventory and Git evidence collection. Never executes project code.
+
+commands:
+  inventory --repo <dir> --out <file>
+      Classify every repository file deterministically without executing anything.
+  git --repo <dir> --identity <identity.json> --out <file>
+      [--start-date <date>] [--end-date <date>] [--starter-ref <ref>] [--upstream-ref <ref>]
+      Collect commits matching the confirmed identity plus optional baseline diffs.
+      Writes an "unavailable" artifact instead of failing when git or the repository is missing.
+
+options:
+  -h, --help     Show this help.
+  --version      Print the skill version.
+
+exit codes: 0 success or recorded degradation; 2 usage error.`;
+
+export function main(argv = process.argv.slice(2)) {
+  let parsed;
+  try { parsed = parseCommandArgs(argv, COMMANDS); }
+  catch (error) { console.error(USAGE); console.error(`collect_evidence.mjs: error: ${error.message}`); return 2; }
+  if (parsed.kind === 'help') { console.log(HELP); return 0; }
+  if (parsed.kind === 'version') { console.log(`verified-project-resume ${VERSION}`); return 0; }
+  try { return COMMANDS[parsed.args.command].fn(parsed.args); }
+  catch (error) { console.error(`collect_evidence.mjs: error: ${error.message}`); return 2; }
 }
-export function main(argv = process.argv.slice(2)) { try { const args = parseArgs(argv); return COMMANDS[args.command].fn(args); } catch (error) { console.error('usage: collect_evidence.mjs {inventory,git} ...'); console.error(`collect_evidence.mjs: error: ${error.message}`); return 2; } }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) process.exitCode = main();

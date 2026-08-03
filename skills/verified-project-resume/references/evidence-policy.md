@@ -1,13 +1,5 @@
 # Evidence and claim policy
 
-## Contents
-
-- Evidence availability
-- Claim status
-- Scope and ownership
-- Resume admission
-- Prohibited upgrades
-
 ## Evidence availability
 
 Use `collected` only when the referenced artifact was actually read or produced. Use `unavailable` when a source or tool cannot be accessed, `not-requested` when it was outside the agreed scope, and `failed` when collection was attempted but errored.

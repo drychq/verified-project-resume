@@ -210,9 +210,18 @@ export function makeLedger({ storyCount = 3, languages = ['zh-CN', 'en'], select
     groupIds.push(groupId);
     records.push(ledgerRecord('candidate-group', groupId, { title: `${label} candidate`, selection_omission_reason: index < selectedCount ? null : 'Less relevant to the current target role than selected candidates.' }, { story_ids: [storyId], candidate_ids: candidateIds }));
   }
-  if (includeSelection) records.push(ledgerRecord('selection', 'selection:current', {
-    target_role: 'systems engineer', job_description: 'Build and validate bounded systems components.', focus: 'correctness and implementation boundaries', languages,
-  }, { selected_group_ids: groupIds.slice(0, selectedCount) }));
+  if (includeSelection) {
+    const overviewTexts = {
+      'zh-CN': '面向课程场景的索引项目：本人负责在既有模块边界内实现并验证核心组件变更。',
+      en: 'A course index project where the user implemented and validated bounded component changes within existing module boundaries.',
+    };
+    for (const language of languages) records.push(ledgerRecord('overview', `overview:${language}`, {
+      language, ...sourcedLedger(overviewTexts[language], ['claim-parser'], ['ev-parser']),
+    }, { claim_ids: ['claim-parser'], evidence_ids: ['ev-parser'], metric_ids: [] }));
+    records.push(ledgerRecord('selection', 'selection:current', {
+      target_role: 'systems engineer', job_description: 'Build and validate bounded systems components.', focus: 'correctness and implementation boundaries', languages,
+    }, { selected_group_ids: groupIds.slice(0, selectedCount) }));
+  }
   return records;
 }
 
@@ -223,6 +232,8 @@ function git(repo, args, name = 'Fixture', email = 'fixture@example.test') {
   if (result.status !== 0) throw new Error(result.stderr || `git ${args.join(' ')} failed`);
   return result.stdout.trim();
 }
+
+export { git as fixtureGit };
 
 export async function createGitFixture(repo) {
   await mkdir(repo, { recursive: true });

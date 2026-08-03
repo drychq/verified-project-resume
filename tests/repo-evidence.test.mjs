@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createGitFixture, writeJson } from './fixture-data.mjs';
+import { createGitFixture, fixtureGit, writeJson } from './fixture-data.mjs';
 import { commandGit } from '../skills/verified-project-resume/scripts/collect_evidence.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -78,4 +78,43 @@ test('collector CLI exposes only inventory and git', () => {
   const result = runScript(['validate', '--archive', 'anything.json']);
   assert.equal(result.status, 2);
   assert.match(result.stderr, /inventory,git/);
+});
+
+test('collector CLI answers help and version', () => {
+  const help = runScript(['--help']);
+  assert.equal(help.status, 0);
+  assert.match(help.stdout, /inventory,git/);
+  const version = runScript(['--version']);
+  assert.equal(version.status, 0);
+  assert.match(version.stdout, /\d+\.\d+\.\d+/);
+});
+
+test('renamed files keep joinable old and new paths', async (t) => {
+  const directory = await temporary(t), repo = path.join(directory, 'repo');
+  await createGitFixture(repo);
+  fixtureGit(repo, ['mv', 'src/parser.cpp', 'src/scanner.cpp'], 'Student Dev', 'student@example.test');
+  fixtureGit(repo, ['commit', '-qm', 'rename parser to scanner'], 'Student Dev', 'student@example.test');
+  const identity = path.join(directory, 'identity.json'), output = path.join(directory, 'git.json');
+  await writeJson(identity, { names: [], emails: ['student@example.test'], github_handle: null, status: 'confirmed' });
+  assert.equal(collectGit(repo, identity, output), 0);
+  const payload = JSON.parse(await readFile(output, 'utf8'));
+  const renameCommit = payload.identity_commits.find((item) => item.subject === 'rename parser to scanner');
+  assert.ok(renameCommit);
+  const moved = renameCommit.changed_files.find((item) => item.previous_path);
+  assert.deepEqual(moved, { path: 'src/scanner.cpp', previous_path: 'src/parser.cpp', added_lines: 0, deleted_lines: 0 });
+  assert.ok(!renameCommit.changed_files.some((item) => item.path.includes('=>')));
+});
+
+test('a commit body containing the field separator is preserved, not truncated', async (t) => {
+  const directory = await temporary(t), repo = path.join(directory, 'repo');
+  await createGitFixture(repo);
+  await writeFile(path.join(repo, 'src/extra.cpp'), 'int extra() { return 2; }\n');
+  fixtureGit(repo, ['add', 'src/extra.cpp'], 'Student Dev', 'student@example.test');
+  fixtureGit(repo, ['commit', '-qm', 'add extra path\n\nbody-head\u001fbody-tail'], 'Student Dev', 'student@example.test');
+  const identity = path.join(directory, 'identity.json'), output = path.join(directory, 'git.json');
+  await writeJson(identity, { names: [], emails: ['student@example.test'], github_handle: null, status: 'confirmed' });
+  assert.equal(collectGit(repo, identity, output), 0);
+  const commit = JSON.parse(await readFile(output, 'utf8')).identity_commits.find((item) => item.subject === 'add extra path');
+  assert.ok(commit);
+  assert.ok(commit.body.includes('body-tail'));
 });

@@ -39,7 +39,7 @@ test('skill frontmatter is valid and matches its directory', async () => {
 });
 
 test('single skill is self-contained and Node-only', async () => {
-  for (const item of ['SKILL.md', 'scripts', 'references', 'agents/openai.yaml']) assert.ok(await stat(path.join(SKILL, item)));
+  for (const item of ['SKILL.md', 'LICENSE', 'scripts', 'references', 'agents/openai.yaml']) assert.ok(await stat(path.join(SKILL, item)));
   const scripts = await filesBelow(path.join(SKILL, 'scripts'));
   assert.ok(scripts.some((file) => file.endsWith('.mjs')));
   assert.ok(!scripts.some((file) => file.endsWith('.py')));
@@ -68,7 +68,14 @@ test('English and Chinese READMEs share the universal install command', async ()
   for (const name of ['README.md', 'README.zh-CN.md']) assert.ok((await readFile(path.join(ROOT, name), 'utf8')).includes(command));
 });
 
-test('checked-in demo exposes Markdown and keeps the ledger private', async () => {
+test('script version matches package metadata and both READMEs', async () => {
+  const { VERSION } = await import('../skills/verified-project-resume/scripts/lib/common.mjs');
+  const manifest = JSON.parse(await readFile(path.join(ROOT, 'package.json'), 'utf8'));
+  assert.equal(VERSION, manifest.version);
+  for (const name of ['README.md', 'README.zh-CN.md']) assert.ok((await readFile(path.join(ROOT, name), 'utf8')).includes(VERSION), name);
+});
+
+test('checked-in demo ships the four Markdown artifacts and the private ledger', async () => {
   for (const name of ['star.md', 'resume-candidate-pool.md', 'resume.md', 'review.md', '.verified-resume/ledger.jsonl']) assert.ok(await stat(path.join(ROOT, 'examples/synthetic-demo', name)));
 });
 

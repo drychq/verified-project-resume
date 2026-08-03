@@ -1,13 +1,25 @@
 {
   "name": "verified-project-resume",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "description": "Portable Agent Skill that turns a real repository into an evidence-backed STAR story library, a guarded candidate pool, and a role-specific resume entry.",
   "private": true,
   "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/drychq/verified-project-resume.git"
+  },
+  "keywords": [
+    "agent-skill",
+    "resume",
+    "star",
+    "evidence"
+  ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test",
     "demo": "node tests/generate-demo.mjs"
   }
 }

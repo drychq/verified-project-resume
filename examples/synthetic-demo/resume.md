@@ -3,6 +3,13 @@
 - Target role: systems engineer
 - Focus: correctness and implementation boundaries
 
+## Project overview
+
+- **zh-CN**: 面向课程场景的索引项目：本人负责在既有模块边界内实现并验证核心组件变更。
+  - Claims: `claim-parser`; Evidence: `ev-parser`
+- **en**: A course index project where the user implemented and validated bounded component changes within existing module boundaries.
+  - Claims: `claim-parser`; Evidence: `ev-parser`
+
 ## Selected bullets
 
 - **zh-CN**: 在既有模块边界内实现并验证 parser 变更，形成可核验的项目能力。

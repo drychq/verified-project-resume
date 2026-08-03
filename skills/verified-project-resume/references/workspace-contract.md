@@ -1,17 +1,10 @@
 # Private workspace contract
 
-## Contents
-
-- User-facing boundary
-- JSONL record envelope
-- Stable semantic records
-- Record examples
-- Extensibility and compatibility
-- Required source chain
-
 ## User-facing boundary
 
 Treat the workspace directory as the interface. Users read `star.md`, `resume-candidate-pool.md`, `resume.md`, and `review.md`. Keep machine files under `.verified-resume/`; never require a user to edit JSONL or choose a schema version.
+
+Advise users to keep the workspace — or at least `.verified-resume/` — out of shared version control: the ledger records local absolute paths and identity details.
 
 ## JSONL record envelope
 
@@ -36,7 +29,7 @@ Use these core kinds:
 
 - `project`, `analysis`, `identity`;
 - `evidence`, `claim`, `contribution`, `metric`;
-- `story`, `candidate`, `candidate-group`, `selection`;
+- `story`, `candidate`, `candidate-group`, `selection`, `overview`;
 - `open-question`, `interview-topic`, `execution`;
 - `legacy-star-item` only for preserved imports.
 
@@ -73,6 +66,12 @@ Candidate records cite a story and repeat only its allowed source subset. Candid
 {"record_type":"selection","id":"selection:current","data":{"target_role":"C++ systems engineer","job_description":"","focus":"correctness","languages":["en"]},"refs":{"selected_group_ids":["group-parser"]}}
 ```
 
+The resume stage also requires one `overview` record per selected language: a one-to-two-sentence resume project introduction. It is sourced text under `data`, its refs mirror the cited IDs, and it passes the same deterministic guard; verified project/team/starter-scope claims may be cited as context, and variants across languages must cite identical source ID sets.
+
+```json
+{"record_type":"overview","id":"overview:en","data":{"language":"en","text":"A course index project where the user implemented bounded token parsing and validated parser boundaries.","claim_ids":["claim-project","claim-parser"],"evidence_ids":["ev-starter","ev-parser-diff"],"metric_ids":[]},"refs":{"claim_ids":["claim-project","claim-parser"],"evidence_ids":["ev-starter","ev-parser-diff"],"metric_ids":[]}}
+```
+
 After writing evidence records, run `workspace.mjs seal --ledger <ledger>` to fill canonical-record, user-confirmation-text, and file-bytes digests deterministically. Prefer an already collected raw artifact and `file-bytes` when practical.
 
 ## Extensibility and compatibility
@@ -89,6 +88,7 @@ Maintain this chain:
 
 ```text
 evidence → claim/metric → contribution → story → candidate-group → selection
+evidence → claim → overview (one per selected language)
 ```
 
 Candidate claim/evidence/metric IDs must be a subset of the cited story's IDs. A final selection may contain only guarded candidate groups. Missing links are hard validation failures.
