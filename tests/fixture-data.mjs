@@ -1,227 +1,231 @@
-import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+
+import { canonical, sha256Text } from '../skills/verified-project-resume/scripts/lib/records.mjs';
 
 export async function writeJson(file, data) {
   await writeFile(file, `${JSON.stringify(data, null, 2)}\n`, { encoding: 'utf8' });
 }
 
-export async function fileSha256(file) {
-  return createHash('sha256').update(await readFile(file)).digest('hex');
-}
+function record(record_type, id, data = {}, refs = {}) { return { record_type, id, data, refs }; }
 
-function digest(value) {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
-}
+function sourced(text, claim_ids, evidence_ids, metric_ids = []) { return { text, claim_ids, evidence_ids, metric_ids }; }
 
-function evidence(id, type, title, excerpt) {
-  const item = {
-    id, type, availability: 'collected', title, locator: { path: title },
-    digest_basis: type === 'user-confirmation' ? 'user-confirmation-text' : 'canonical-record',
-    sha256: null, excerpt, collected_at: '2026-07-20T00:00:00Z',
-  };
-  if (type === 'user-confirmation') item.sha256 = digest(excerpt);
-  else {
-    // Match Python's canonical JSON: sorted keys, compact separators, UTF-8 text.
-    const payload = { excerpt: item.excerpt, locator: item.locator, title: item.title, type: item.type };
-    item.sha256 = digest(JSON.stringify(payload));
-  }
-  return item;
-}
-
-function claim(id, text, scope, status, ownership_level, action_kind, evidence_ids, resume_eligible, tags = []) {
-  return { id, text, scope, status, ownership_level, action_kind, tags, evidence_ids,
-    confidence: status === 'verified' ? 'high' : 'medium',
-    confidence_reason: 'Synthetic fixture evidence explicitly supports this narrow claim.', resume_eligible };
-}
-
-function starItem(id, text, claim_ids, evidence_ids, metric_ids = [], status = 'verified', resume_eligible = true) {
-  return { id, text, claim_ids, evidence_ids, metric_ids, status, resume_eligible };
-}
-
-export function makeArchive(repoRoot = '/synthetic/course-index') {
-  return {
-    schema_version: '1.0.0',
-    project: { id: 'course-index', name: 'Course Index', repo_root: repoRoot, revision: '1234567890abcdef', repository_kind: 'course', remote_url: null },
-    analysis_scope: { start_date: null, end_date: null, starter_ref: 'starter', upstream_ref: null, github_availability: 'unavailable', execution_policy: 'ask-before-execute', collected_at: '2026-07-20T00:00:00Z' },
-    identity: { names: ['Student Dev'], emails: ['student@example.test', 'student+school@example.test'], github_handle: null, status: 'confirmed' },
-    evidence: [
-      evidence('ev-starter', 'upstream', 'starter/src/core.cpp', 'Parser and lookup existed in starter.'),
-      evidence('ev-parser-diff', 'diff', 'src/parser.cpp', 'Student added bounded token parsing.'),
-      evidence('ev-dependency', 'dependency', 'src/storage.cpp', 'Student called SQLite through a wrapper.'),
-      evidence('ev-test', 'test', 'tests/test_index.cpp', '12 deterministic tests passed.'),
-      evidence('ev-benchmark', 'benchmark', 'benchmarks/raw.json', 'Baseline 20 ms; result 10 ms.'),
-      evidence('ev-fix-diff', 'diff', 'src/cache.cpp', 'Student fixed an invalidation bug in teammate-owned cache code.'),
-      evidence('ev-confirm', 'user-confirmation', 'user confirmation 1', 'I was responsible for parser boundary validation.'),
-      evidence('ev-readme', 'file', 'README.md', 'A future target says 10x faster, without raw measurement.'),
-    ],
-    claims: [
-      claim('c-project', 'The course project provides parsing, indexed lookup, and persistent storage.', 'project', 'verified', 'none', 'none', ['ev-starter', 'ev-dependency'], true),
-      claim('c-starter', 'Parsing and lookup existed in the supplied starter.', 'starter', 'verified', 'none', 'none', ['ev-starter'], false),
-      claim('c-parser', 'The user implemented bounded token parsing in the assigned parser module.', 'user-partial', 'verified', 'shared', 'implemented', ['ev-parser-diff'], true),
-      claim('c-integration', 'The user integrated SQLite through the project storage wrapper.', 'user-partial', 'verified', 'contributor', 'integrated', ['ev-dependency'], true, ['dependency-integration']),
-      claim('c-tests', 'The user added and ran deterministic correctness tests for parser and storage boundaries.', 'user-partial', 'verified', 'contributor', 'tested', ['ev-test'], true),
-      claim('c-fix', 'The user debugged and fixed cache invalidation in a module originally implemented by a teammate.', 'user-partial', 'verified', 'contributor', 'debugged', ['ev-fix-diff', 'ev-test'], true),
-      claim('c-team-architecture', 'The team used a parser, index, storage, and cache architecture.', 'team', 'verified', 'shared', 'none', ['ev-starter', 'ev-dependency'], true),
-      claim('c-confirmed-role', 'The user was responsible for parser boundary validation.', 'user-partial', 'user-confirmed', 'contributor', 'tested', ['ev-confirm'], true),
-      claim('c-planned', 'A 10x speedup was documented as a future target.', 'project', 'inferred', 'none', 'none', ['ev-readme'], false),
-      claim('c-production', 'The project may be production reliable.', 'unknown', 'unknown', 'unknown', 'none', [], false),
-    ],
-    contributions: [
-      { id: 'con-parser', summary: 'Bounded parser implementation and validation', claim_ids: ['c-parser', 'c-confirmed-role'], evidence_ids: ['ev-parser-diff', 'ev-confirm'], paths: ['src/parser.cpp'], symbols: ['Parser::parseToken'], commit_ids: ['commit-user-parser'] },
-      { id: 'con-storage', summary: 'SQLite wrapper integration and correctness tests', claim_ids: ['c-integration', 'c-tests'], evidence_ids: ['ev-dependency', 'ev-test'], paths: ['src/storage.cpp', 'tests/test_index.cpp'], symbols: ['Storage::put'], commit_ids: ['commit-user-storage'] },
-      { id: 'con-cache-fix', summary: 'Targeted cache invalidation bug fix', claim_ids: ['c-fix'], evidence_ids: ['ev-fix-diff', 'ev-test'], paths: ['src/cache.cpp'], symbols: ['Cache::invalidate'], commit_ids: ['commit-user-fix'] },
-    ],
-    metrics: [
-      { id: 'm-latency', name: 'parser fixture latency', kind: 'performance', status: 'verified-measured', value: 10, unit: 'ms', baseline: 20, result: 10, measurement_method: 'Median of the fixed synthetic input using the recorded benchmark command.', evidence_ids: ['ev-benchmark'], resume_eligible: true },
-      { id: 'm-tests', name: 'deterministic correctness tests', kind: 'count', status: 'verified-count', value: 12, unit: 'tests', baseline: null, result: null, measurement_method: 'Counted from recorded test output.', evidence_ids: ['ev-test'], resume_eligible: true },
-      { id: 'm-readme-target', name: 'README future speedup target', kind: 'performance', status: 'documented-unverified', value: '10x', unit: null, baseline: null, result: null, measurement_method: null, evidence_ids: ['ev-readme'], resume_eligible: false },
-      { id: 'm-user-number', name: 'remembered throughput', kind: 'performance', status: 'user-confirmed', value: 1000, unit: 'ops/s', baseline: null, result: null, measurement_method: null, evidence_ids: ['ev-confirm'], resume_eligible: false },
-    ],
-    star: {
-      situation: [starItem('s-1', 'The starter supplied the core parser and lookup path, so project capability was separated from student work.', ['c-starter', 'c-project'], ['ev-starter'], [], 'verified', false)],
-      task: [starItem('t-1', 'The user was responsible for parser boundary validation.', ['c-confirmed-role'], ['ev-confirm'], [], 'user-confirmed')],
-      action: [
-        starItem('a-1', 'Implemented bounded token parsing in the assigned module.', ['c-parser'], ['ev-parser-diff']),
-        starItem('a-2', 'Integrated SQLite through the existing storage wrapper and tested boundary behavior.', ['c-integration', 'c-tests'], ['ev-dependency', 'ev-test']),
-        starItem('a-3', 'Debugged and fixed cache invalidation without claiming the teammate-owned module architecture.', ['c-fix'], ['ev-fix-diff', 'ev-test']),
-      ],
-      result: [
-        starItem('r-1', 'Measured parser fixture latency changed from 20 ms to 10 ms under the recorded method.', ['c-parser'], ['ev-parser-diff', 'ev-benchmark'], ['m-latency']),
-        starItem('r-2', 'The parser and storage boundaries passed 12 deterministic tests.', ['c-tests'], ['ev-test'], ['m-tests']),
-        starItem('r-3', 'The confirmed cache invalidation defect was eliminated in the tested fixture.', ['c-fix'], ['ev-fix-diff', 'ev-test']),
-      ],
-    },
-    open_questions: [{ id: 'q-1', question: 'Was the parser design assigned or proposed by the user?', affects_claim_ids: ['c-parser'], status: 'open' }],
-    interview_topics: [
-      { id: 'i-1', topic: 'Parser boundary handling', claim_ids: ['c-parser', 'c-confirmed-role'], questions: ['Which malformed inputs were rejected?', 'Why was the parser change bounded to one module?'] },
-      { id: 'i-2', topic: 'Benchmark limits', claim_ids: ['c-parser'], questions: ['How was the fixture held constant?', 'Why is this not a production performance claim?'] },
-    ],
-    execution_log: [{ id: 'run-1', kind: 'benchmark', command: './bench_parser --fixture fixed.txt', cwd: repoRoot, approval: 'approved', status: 'completed', exit_code: 0, stdout_path: 'benchmarks/raw.json', stderr_path: null, timestamp: '2026-07-20T00:00:00Z' }],
-  };
-}
-
-function sourced(language, text, claim_ids, evidence_ids, metric_ids = []) { return { language, text, claim_ids, evidence_ids, metric_ids }; }
-function clause(text, claim_ids, evidence_ids, metric_ids = []) { return { text, claim_ids, evidence_ids, metric_ids }; }
-function candidate(id, language, text, action, method, result, submittable) {
-  return { id, language, text, clauses: { action, method, result }, interview_questions: ['What did the cited diff change?', 'What are the evidence limits?'], risk_flags: [], submittable };
-}
-
-export async function makeCandidates(archivePath, both = true, passed = true) {
-  const languages = both ? ['zh-CN', 'en'] : ['en'];
-  const summaries = [];
-  if (languages.includes('zh-CN')) summaries.push(sourced('zh-CN', '基于课程 starter 扩展的索引项目，包含解析、持久化与缓存能力。', ['c-project'], ['ev-starter', 'ev-dependency']));
-  summaries.push(sourced('en', 'A course index extending a supplied starter with parsing, persistence, and caching capabilities.', ['c-project'], ['ev-starter', 'ev-dependency']));
-  const specs = [
-    ['parser-latency', 'action-method-result', {
-      'zh-CN': ['在分配的解析模块中实现有界 token 解析，通过固定合成输入将延迟从 20 ms 降至 10 ms。', clause('实现有界 token 解析', ['c-parser'], ['ev-parser-diff']), clause('使用固定合成输入验证解析路径', ['c-parser'], ['ev-parser-diff']), clause('延迟从 20 ms 降至 10 ms', ['c-parser'], ['ev-parser-diff', 'ev-benchmark'], ['m-latency'])],
-      en: ['Implemented bounded token parsing in the assigned module, reducing fixed-fixture latency from 20 ms to 10 ms under the recorded benchmark method.', clause('Implemented bounded token parsing', ['c-parser'], ['ev-parser-diff']), clause('Used a fixed synthetic input under the recorded method', ['c-parser'], ['ev-parser-diff']), clause('Reduced latency from 20 ms to 10 ms', ['c-parser'], ['ev-parser-diff', 'ev-benchmark'], ['m-latency'])],
-    }],
-    ['storage-tests', 'action-method-verified-capability', {
-      'zh-CN': ['通过现有存储封装集成 SQLite，并用 12 项确定性测试验证解析与存储边界。', clause('集成 SQLite', ['c-integration'], ['ev-dependency']), clause('通过现有存储封装并编写边界测试', ['c-integration', 'c-tests'], ['ev-dependency', 'ev-test']), clause('通过 12 项确定性测试', ['c-tests'], ['ev-test'], ['m-tests'])],
-      en: ['Integrated SQLite through the existing storage wrapper and validated parser and storage boundaries with 12 deterministic tests.', clause('Integrated SQLite', ['c-integration'], ['ev-dependency']), clause('Used the existing wrapper and added boundary tests', ['c-integration', 'c-tests'], ['ev-dependency', 'ev-test']), clause('Passed 12 deterministic tests', ['c-tests'], ['ev-test'], ['m-tests'])],
-    }],
-    ['cache-fix', 'action-method-verified-capability', {
-      'zh-CN': ['定位并修复队友模块中的缓存失效缺陷，通过回归测试确认目标错误路径已消除。', clause('定位并修复缓存失效缺陷', ['c-fix'], ['ev-fix-diff', 'ev-test']), clause('限制修改范围并执行回归测试', ['c-fix'], ['ev-fix-diff', 'ev-test']), clause('确认目标错误路径已消除', ['c-fix'], ['ev-fix-diff', 'ev-test'])],
-      en: ['Debugged and fixed cache invalidation in a module implemented by a teammate, using regression tests to confirm the targeted failure path was eliminated.', clause('Debugged and fixed cache invalidation', ['c-fix'], ['ev-fix-diff', 'ev-test']), clause('Kept the change scoped and ran regression tests', ['c-fix'], ['ev-fix-diff', 'ev-test']), clause('Confirmed the targeted failure path was eliminated', ['c-fix'], ['ev-fix-diff', 'ev-test'])],
-    }],
-  ];
-  const groups = specs.map(([semantic_group_id, compression_method, variants]) => ({
-    semantic_group_id, compression_method,
-    variants: languages.map((language) => {
-      const [text, action, method, result] = variants[language];
-      return candidate(`${semantic_group_id}-${language}`, language, text, action, method, result, passed);
-    }),
-  }));
-  return {
-    schema_version: '1.0.0',
-    source_archive: { path: path.resolve(archivePath), sha256: await fileSha256(archivePath) },
-    settings: { target_role: 'systems engineer', languages, bullet_count: 3, focus: 'correctness and measured performance' },
-    project_summaries: summaries, candidate_groups: groups,
-    excluded_claims: [
-      { claim_id: 'c-starter', reason: 'Starter functionality is not a user contribution.' },
-      { claim_id: 'c-team-architecture', reason: 'Valid team context, but not selected for the concise candidate set.' },
-      { claim_id: 'c-confirmed-role', reason: 'Qualitative responsibility is supported but redundant with the selected parser action.' },
-      { claim_id: 'c-planned', reason: 'Future target is inferred and unmeasured.' },
-      { claim_id: 'c-production', reason: 'Production reliability is unknown.' },
-    ],
-    warnings: ['Measured latency applies only to the fixed synthetic fixture.'],
-    guard: { version: '1.0.0', status: passed ? 'pass' : 'draft', errors: [], checked_at: passed ? '2026-07-20T00:00:00Z' : null },
-  };
-}
-
-function ledgerRecord(record_type, id, data = {}, refs = {}) { return { record_type, id, data, refs }; }
-
-function ledgerEvidence(id, title, excerpt) {
+function projectEvidence(id, title, excerpt) {
   const data = {
     type: 'diff', availability: 'collected', title, locator: { path: title },
     digest_basis: 'canonical-record', sha256: null, excerpt, collected_at: '2026-07-20T00:00:00Z',
   };
-  data.sha256 = digest(JSON.stringify({ excerpt: data.excerpt, locator: data.locator, title: data.title, type: data.type }));
-  return ledgerRecord('evidence', id, data, {});
+  data.sha256 = sha256Text(canonical({ type: data.type, title: data.title, locator: data.locator, excerpt: data.excerpt }));
+  return record('evidence', id, data, {});
 }
 
-function sourcedLedger(text, claim_ids, evidence_ids, metric_ids = []) { return { text, claim_ids, evidence_ids, metric_ids }; }
+function userTextEvidence(id, type, title, excerpt) {
+  return record('evidence', id, {
+    type, availability: 'collected', title, locator: {},
+    digest_basis: 'user-confirmation-text', sha256: sha256Text(excerpt), excerpt, collected_at: '2026-07-20T00:00:00Z',
+  }, {});
+}
 
-export function makeLedger({ storyCount = 3, languages = ['zh-CN', 'en'], selectedCount = Math.min(3, storyCount), includeSelection = true } = {}) {
+function proposalEvidence(id, title, proposalExcerpt, confirmationExcerpt) {
+  return record('evidence', id, {
+    type: 'user-approved-proposal', availability: 'collected', title, locator: {},
+    digest_basis: 'proposal-confirmation-text', sha256: sha256Text(canonical({ proposal_excerpt: proposalExcerpt, confirmation_excerpt: confirmationExcerpt })),
+    proposal_excerpt: proposalExcerpt, confirmation_excerpt: confirmationExcerpt, collected_at: '2026-07-20T00:00:00Z',
+  }, {});
+}
+
+function narrationClaim(id, text, scope, status, ownership_level, action_kind, evidence_ids, tags = []) {
+  return record('claim', id, { text, scope, status, ownership_level, action_kind, tags,
+    confidence: status === 'verified' ? 'high' : 'medium',
+    confidence_reason: 'Synthetic fixture evidence explicitly supports this narrow claim.', resume_eligible: true }, { evidence_ids });
+}
+
+export function makeRepositoryRecords({ storyCount = 3, languages = ['zh-CN', 'en'], selectedCount = Math.min(3, storyCount), includeSelection = true } = {}) {
   const records = [
-    ledgerRecord('project', 'project:course-index', { id: 'course-index', name: 'Course Index', repo_root: '/synthetic-fixture/course-index', revision: '1234567890abcdef', repository_kind: 'course', remote_url: null }, {}),
-    ledgerRecord('analysis', 'analysis:primary', { execution_policy: 'ask-before-execute', collected_at: '2026-07-20T00:00:00Z' }, {}),
-    ledgerRecord('identity', 'identity:primary', { names: ['Student Dev'], emails: ['student@example.test'], status: 'confirmed' }, {}),
+    record('project', 'project:course-index', { id: 'course-index', name: 'Course Index', repo_root: '/synthetic-fixture/course-index', revision: '1234567890abcdef', repository_kind: 'course', remote_url: null }, {}),
+    record('analysis', 'analysis:primary', { execution_policy: 'ask-before-execute', collected_at: '2026-07-20T00:00:00Z' }, {}),
+    record('identity', 'identity:primary', { names: ['Student Dev'], emails: ['student@example.test'], status: 'confirmed' }, {}),
   ];
   const labels = ['parser', 'storage', 'cache', 'scheduler', 'protocol', 'index', 'logging', 'testing'];
   const groupIds = [];
   for (let index = 0; index < storyCount; index += 1) {
     const label = labels[index] ?? `component-${index + 1}`;
     const evidenceId = `ev-${label}`, claimId = `claim-${label}`, contributionId = `contribution-${label}`, storyId = `story-${label}`, groupId = `group-${label}`;
-    const claimText = `The user implemented the bounded ${label} change and verified its project-specific behavior.`;
-    records.push(ledgerEvidence(evidenceId, `src/${label}.cpp`, `Student implemented and verified the bounded ${label} change.`));
-    records.push(ledgerRecord('claim', claimId, {
+    const claimText = `The user implemented the bounded ${label} change and validated its project-specific behavior.`;
+    records.push(projectEvidence(evidenceId, `src/${label}.cpp`, `Student implemented and validated the bounded ${label} change.`));
+    records.push(record('claim', claimId, {
       text: claimText, scope: 'user-partial', status: 'verified', ownership_level: 'shared', action_kind: 'implemented', tags: [], confidence: 'high', confidence_reason: 'The synthetic diff directly supports the bounded change.', resume_eligible: true,
     }, { evidence_ids: [evidenceId] }));
-    records.push(ledgerRecord('contribution', contributionId, { summary: `${label} implementation and validation`, paths: [`src/${label}.cpp`], symbols: [`${label}::run`], commit_ids: [`commit-${label}`], star_omission_reason: null }, { claim_ids: [claimId], evidence_ids: [evidenceId], metric_ids: [] }));
-    const section = (text) => sourcedLedger(text, [claimId], [evidenceId]);
-    records.push(ledgerRecord('story', storyId, {
+    records.push(record('contribution', contributionId, { summary: `${label} implementation and validation`, paths: [`src/${label}.cpp`], symbols: [`${label}::run`], commit_ids: [`commit-${label}`], star_omission_reason: null }, { claim_ids: [claimId], evidence_ids: [evidenceId], metric_ids: [] }));
+    const section = (text) => sourced(text, [claimId], [evidenceId]);
+    records.push(record('story', storyId, {
       title: `${label} implementation and validation`,
-      situation: [section(`The verified project path required a bounded ${label} change.`)],
+      situation: [section(`The project required a bounded ${label} change within the existing module.`)],
       task: [section(`The user was responsible for the scoped ${label} implementation and its validation.`)],
       actions: [section(`Implemented the bounded ${label} behavior within the assigned path.`), section(`Validated the ${label} behavior against the cited project evidence.`)],
-      results: [section(`Established the verified ${label} capability within the tested project boundary.`)],
+      results: [section(`Established the ${label} capability within the cited project boundary.`)],
       constraints: ['Personal ownership is limited to the cited change.'], decisions: [`Kept the ${label} change within its existing module boundary.`], tradeoffs: ['Preferred a bounded change over claiming broader subsystem ownership.'],
-      result_limits: ['The evidence supports the project-specific capability, not production scale or reliability.'],
-      interview_questions: [`Why was the ${label} change kept within this boundary?`], risk_flags: [], resume_eligible: true, legacy_review_required: false,
+      result_limits: ['The sources support the project-specific capability, not production scale or reliability.'],
+      interview_questions: [`Why was the ${label} change kept within this boundary?`], risk_flags: [], resume_eligible: true,
     }, { contribution_ids: [contributionId], claim_ids: [claimId], evidence_ids: [evidenceId], metric_ids: [], open_question_ids: [] }));
     const candidateIds = [];
     for (const language of languages) {
-      const text = language === 'zh-CN' ? `在既有模块边界内实现并验证 ${label} 变更，形成可核验的项目能力。` : `Implemented and validated the bounded ${label} change, establishing the verified project capability.`;
+      const text = language === 'zh-CN' ? `在既有模块边界内实现并验证 ${label} 变更，形成有来源的项目能力。` : `Implemented and validated the bounded ${label} change, establishing the capability from recorded sources.`;
       const candidateId = `candidate-${label}-${language}`;
       candidateIds.push(candidateId);
-      records.push(ledgerRecord('candidate', candidateId, {
-        language, text, compression_method: 'action-method-verified-capability',
+      records.push(record('candidate', candidateId, {
+        language, text, compression_method: 'action-method-capability',
         clauses: {
           action: section(language === 'zh-CN' ? `实现 ${label} 变更` : `Implemented the bounded ${label} change`),
           method: section(language === 'zh-CN' ? '限制在既有模块边界内并验证行为' : 'Kept the change bounded and validated its behavior'),
-          result: section(language === 'zh-CN' ? '形成可核验的项目能力' : 'Established the verified project capability'),
+          result: section(language === 'zh-CN' ? '形成有来源的项目能力' : 'Established the capability from recorded sources'),
         },
-        interview_questions: [`What did the ${label} diff change?`], risk_flags: [],
+        interview_questions: [`What did the ${label} change cover?`],
+        interview_qa: language === 'zh-CN'
+          ? [{ question: `这次 ${label} 改动覆盖了什么？`, answer: '只覆盖证据里记录的边界内改动，不主张更多所有权。' }]
+          : [{ question: `What did the ${label} change cover?`, answer: 'Only the bounded change recorded in the cited evidence; no broader ownership.' }],
+        risk_flags: [],
       }, { story_ids: [storyId], claim_ids: [claimId], evidence_ids: [evidenceId], metric_ids: [] }));
     }
     groupIds.push(groupId);
-    records.push(ledgerRecord('candidate-group', groupId, { title: `${label} candidate`, selection_omission_reason: index < selectedCount ? null : 'Less relevant to the current target role than selected candidates.' }, { story_ids: [storyId], candidate_ids: candidateIds }));
+    records.push(record('candidate-group', groupId, { title: `${label} option`, selection_omission_reason: index < selectedCount ? null : 'Less relevant to the current target role than selected options.' }, { story_ids: [storyId], candidate_ids: candidateIds }));
   }
   if (includeSelection) {
     const overviewTexts = {
       'zh-CN': '面向课程场景的索引项目：本人负责在既有模块边界内实现并验证核心组件变更。',
       en: 'A course index project where the user implemented and validated bounded component changes within existing module boundaries.',
     };
-    for (const language of languages) records.push(ledgerRecord('overview', `overview:${language}`, {
-      language, ...sourcedLedger(overviewTexts[language], ['claim-parser'], ['ev-parser']),
+    const overviewQa = {
+      'zh-CN': [{ question: '这些组件都是你一个人做的吗？', answer: '不是；只包括证据里记录的边界内改动。' }],
+      en: [{ question: 'Did you build every component alone?', answer: 'No; the sources cover bounded changes within each module.' }],
+    };
+    for (const language of languages) records.push(record('overview', `overview:${language}`, {
+      language, ...sourced(overviewTexts[language], ['claim-parser'], ['ev-parser']), interview_qa: overviewQa[language],
     }, { claim_ids: ['claim-parser'], evidence_ids: ['ev-parser'], metric_ids: [] }));
-    records.push(ledgerRecord('selection', 'selection:current', {
+    records.push(record('selection', 'selection:current', {
       target_role: 'systems engineer', job_description: 'Build and validate bounded systems components.', focus: 'correctness and implementation boundaries', languages,
     }, { selected_group_ids: groupIds.slice(0, selectedCount) }));
   }
+  return records;
+}
+
+export function makeNarrationRecords({ languages = ['zh-CN', 'en'] } = {}) {
+  const records = [
+    record('project', 'project:risk-rule-engine', { id: 'risk-rule-engine', name: 'Risk Rule Engine', repo_root: null, revision: null, repository_kind: 'confidential', remote_url: null }, {}),
+    record('analysis', 'analysis:primary', { provided_sources: ['user statements', 'user materials'], code_available: false, collected_at: '2026-07-20T00:00:00Z' }, {}),
+    record('identity', 'identity:primary', { names: ['Demo User'], emails: [], github_handle: null, status: 'self-reported' }, {}),
+    userTextEvidence('ev-narr-context', 'user-statement', 'user statement: project context', '系统是内部风控服务，规则原先写死在代码里，改一次规则要走完整的发版流程。'),
+    userTextEvidence('ev-narr-role', 'user-statement', 'user statement: role', '我在组里负责风控规则引擎的规则解析模块，主要是把旧的硬编码规则迁移成可配置的 DSL。'),
+    userTextEvidence('ev-narr-owner', 'user-confirmation', 'user confirmation: ownership', '对，解析模块主要是我做的，另一个同事负责接入层。'),
+    userTextEvidence('ev-narr-perf', 'user-statement', 'user statement: effect', '重构之后规则加载快了不少，以前改规则要提前一周准备，后来基本当天就能上。'),
+    userTextEvidence('ev-narr-number', 'user-statement', 'user statement: scale', '峰值大概 2000 QPS 吧，平时是几百的量级。'),
+    userTextEvidence('ev-old-resume', 'user-material', 'old resume excerpt', '旧简历摘录：负责风控策略配置化改造，参与规则引擎重构。'),
+    proposalEvidence('ev-prop-parser', 'confirmed proposal: parser', '规则解析模块基于 ANTLR 实现表达式解析，支持规则文件热加载。', '对，是 ANTLR 做的，热加载也是我加的。'),
+  ];
+  records.push(narrationClaim('claim-risk-project', '项目是内部风控服务，规则原先硬编码在代码中，修改规则需要完整发版。', 'project', 'user-confirmed', 'none', 'none', ['ev-narr-context']));
+  records.push(narrationClaim('claim-risk-role', '用户负责风控规则引擎的规则解析模块，与接入层同事协作。', 'user-partial', 'user-confirmed', 'shared', 'implemented', ['ev-narr-role', 'ev-narr-owner']));
+  records.push(narrationClaim('claim-risk-migrate', '用户参与把硬编码规则迁移为可配置的规则描述。', 'user-partial', 'user-confirmed', 'shared', 'implemented', ['ev-old-resume', 'ev-narr-role']));
+  records.push(narrationClaim('claim-risk-parser', '规则解析模块基于 ANTLR 实现表达式解析，支持规则文件热加载。', 'user-partial', 'user-approved', 'shared', 'implemented', ['ev-prop-parser']));
+  records.push(narrationClaim('claim-risk-perf', '重构后规则加载与发布明显加快，改规则不再需要提前一周准备。', 'user-partial', 'user-confirmed', 'shared', 'optimized', ['ev-narr-perf']));
+  records.push(record('metric', 'metric-risk-peak', {
+    name: 'peak request rate', kind: 'performance', status: 'user-provided', value: 2000, unit: 'QPS', baseline: null, result: null,
+    measurement_method: null, source_note: '口述回忆的峰值量级', review_flags: ['user-provided-number'], resume_eligible: true,
+  }, { evidence_ids: ['ev-narr-number'] }));
+  records.push(record('contribution', 'contribution-rule-engine', {
+    summary: '风控规则引擎解析模块与规则配置化改造', paths: [], symbols: [], commit_ids: [], star_omission_reason: null,
+  }, { claim_ids: ['claim-risk-role', 'claim-risk-migrate', 'claim-risk-parser', 'claim-risk-perf'], evidence_ids: ['ev-narr-role', 'ev-narr-owner', 'ev-old-resume', 'ev-prop-parser', 'ev-narr-perf', 'ev-narr-number'], metric_ids: ['metric-risk-peak'] }));
+  records.push(record('story', 'story-rule-engine', {
+    title: '风控规则引擎：解析模块与规则配置化',
+    situation: [sourced('项目是内部风控服务，规则原先硬编码在代码里，改一次规则要走完整发版流程。', ['claim-risk-project'], ['ev-narr-context'])],
+    task: [sourced('用户负责规则解析模块，与接入层同事协作。', ['claim-risk-role'], ['ev-narr-role', 'ev-narr-owner'])],
+    actions: [
+      sourced('基于 ANTLR 实现表达式解析器，支持规则文件热加载。', ['claim-risk-parser'], ['ev-prop-parser']),
+      sourced('把硬编码规则迁移为可配置的规则描述。', ['claim-risk-migrate'], ['ev-old-resume', 'ev-narr-role']),
+    ],
+    results: [sourced('规则加载与发布明显加快，峰值约 2000 QPS 场景下保持稳定。', ['claim-risk-perf'], ['ev-narr-perf', 'ev-narr-number'], ['metric-risk-peak'])],
+    constraints: ['代码与文档不能带出公司，全部来源为用户口述、旧材料与逐条确认。'],
+    decisions: ['解析方案采用 ANTLR 表达式解析（经用户逐条确认）。'],
+    tradeoffs: ['以规则文件热加载代替重新发版。'],
+    result_limits: ['数字来自用户口述回忆，没有监控截图；性能表述仅由口述支撑。'],
+    interview_questions: ['热加载与解析器分别由谁完成？', '峰值 2000 QPS 的口径是什么？'],
+    risk_flags: ['user-provided-number'], resume_eligible: true,
+  }, { contribution_ids: ['contribution-rule-engine'], claim_ids: ['claim-risk-project', 'claim-risk-role', 'claim-risk-migrate', 'claim-risk-parser', 'claim-risk-perf'], evidence_ids: ['ev-narr-context', 'ev-narr-role', 'ev-narr-owner', 'ev-old-resume', 'ev-prop-parser', 'ev-narr-perf', 'ev-narr-number'], metric_ids: ['metric-risk-peak'], open_question_ids: ['q-qps-source'] }));
+
+  const parserTexts = {
+    'zh-CN': '负责风控规则引擎的规则解析模块，基于 ANTLR 实现表达式解析与文件热加载，并将硬编码规则迁移为可配置定义，在峰值约 2000 QPS 场景下提升规则发布效率。',
+    en: 'Worked on the rule-parsing module of the risk-control rule engine, built the expression parser with ANTLR and file hot reload, migrated hard-coded rules to configurable definitions, and improved rule rollout efficiency under a peak load of about 2000 QPS.',
+  };
+  const configTexts = {
+    'zh-CN': '将硬编码风控规则迁移为可配置的规则描述，并配合解析模块改造缩短规则上线流程。',
+    en: 'Migrated hard-coded risk rules to configurable rule definitions and shortened the rule rollout path alongside the parser rework.',
+  };
+  const parserQa = {
+    'zh-CN': [
+      { question: 'ANTLR 方案是你定的吗？', answer: '方案由我提出并在整理时逐条确认，解析器与热加载都是我实现的。' },
+      { question: '2000 QPS 这个数字从哪来？', answer: '口述回忆的峰值量级，没有监控截图，答辩时按回忆值说明。' },
+    ],
+    en: [
+      { question: 'Was the ANTLR choice yours?', answer: 'I proposed it and confirmed the wording item by item; I built the parser and the hot reload.' },
+      { question: 'Where does 2000 QPS come from?', answer: 'A remembered peak magnitude; there is no dashboard screenshot, so I state it as recalled.' },
+    ],
+  };
+  const parserClauses = {
+    'zh-CN': {
+      action: sourced('基于 ANTLR 实现表达式解析与文件热加载', ['claim-risk-parser'], ['ev-prop-parser']),
+      method: sourced('将硬编码规则迁移为可配置定义', ['claim-risk-migrate'], ['ev-old-resume', 'ev-narr-role']),
+      result: sourced('在峰值约 2000 QPS 场景下提升规则发布效率', ['claim-risk-perf'], ['ev-narr-perf', 'ev-narr-number'], ['metric-risk-peak']),
+    },
+    en: {
+      action: sourced('Built the expression parser with ANTLR and file hot reload', ['claim-risk-parser'], ['ev-prop-parser']),
+      method: sourced('Migrated hard-coded rules to configurable definitions', ['claim-risk-migrate'], ['ev-old-resume', 'ev-narr-role']),
+      result: sourced('Improved rule rollout efficiency under a peak load of about 2000 QPS', ['claim-risk-perf'], ['ev-narr-perf', 'ev-narr-number'], ['metric-risk-peak']),
+    },
+  };
+  const configClauses = {
+    'zh-CN': {
+      action: sourced('将硬编码风控规则迁移为可配置描述', ['claim-risk-migrate'], ['ev-old-resume', 'ev-narr-role']),
+      method: sourced('配合解析模块改造', ['claim-risk-parser'], ['ev-prop-parser']),
+      result: sourced('缩短规则上线流程', ['claim-risk-perf'], ['ev-narr-perf']),
+    },
+    en: {
+      action: sourced('Migrated hard-coded risk rules to configurable definitions', ['claim-risk-migrate'], ['ev-old-resume', 'ev-narr-role']),
+      method: sourced('Worked alongside the parser rework', ['claim-risk-parser'], ['ev-prop-parser']),
+      result: sourced('Shortened the rule rollout path', ['claim-risk-perf'], ['ev-narr-perf']),
+    },
+  };
+  const candidateIds = [];
+  for (const language of languages) {
+    const parserId = `candidate-rule-parser-${language}`, configId = `candidate-rule-config-${language}`;
+    candidateIds.push({ parserId, configId, language });
+    records.push(record('candidate', parserId, {
+      language, text: parserTexts[language], compression_method: 'action-method-result', clauses: parserClauses[language],
+      interview_questions: ['热加载与解析器分别由谁完成？'], interview_qa: parserQa[language], risk_flags: ['user-provided-number'],
+    }, { story_ids: ['story-rule-engine'], claim_ids: ['claim-risk-parser', 'claim-risk-migrate', 'claim-risk-perf'], evidence_ids: ['ev-prop-parser', 'ev-old-resume', 'ev-narr-role', 'ev-narr-perf', 'ev-narr-number'], metric_ids: ['metric-risk-peak'] }));
+    records.push(record('candidate', configId, {
+      language, text: configTexts[language], compression_method: 'action-method-result', clauses: configClauses[language],
+      interview_questions: ['规则配置化改造的范围是什么？'], risk_flags: [],
+    }, { story_ids: ['story-rule-engine'], claim_ids: ['claim-risk-migrate', 'claim-risk-parser', 'claim-risk-perf'], evidence_ids: ['ev-old-resume', 'ev-narr-role', 'ev-prop-parser', 'ev-narr-perf'], metric_ids: [] }));
+  }
+  records.push(record('candidate-group', 'group-rule-parser', { title: 'rule parser option', selection_omission_reason: null }, { story_ids: ['story-rule-engine'], candidate_ids: candidateIds.map((item) => item.parserId) }));
+  records.push(record('candidate-group', 'group-rule-config', { title: 'rule configuration option', selection_omission_reason: '与目标岗位相关性较低，保留在备选项中。' }, { story_ids: ['story-rule-engine'], candidate_ids: candidateIds.map((item) => item.configId) }));
+  const overviewTexts = {
+    'zh-CN': '内部风控规则引擎项目：本人负责规则解析模块，基于 ANTLR 实现表达式解析与文件热加载，并参与将硬编码规则迁移为可配置描述。',
+    en: 'An internal risk-control rule engine where the user worked on the rule-parsing module, built the expression parser with ANTLR, and helped migrate hard-coded rules to configurable definitions.',
+  };
+  const overviewQa = {
+    'zh-CN': [{ question: '整个引擎都是你做的吗？', answer: '不是；我只负责解析模块，接入层由同事负责，表述按此口径。' }],
+    en: [{ question: 'Did you build the whole engine?', answer: 'No; I owned the parsing module while a teammate covered the integration layer.' }],
+  };
+  const overviewSources = { claim_ids: ['claim-risk-project', 'claim-risk-role', 'claim-risk-parser', 'claim-risk-migrate'], evidence_ids: ['ev-narr-context', 'ev-narr-role', 'ev-narr-owner', 'ev-prop-parser', 'ev-old-resume'] };
+  for (const language of languages) records.push(record('overview', `overview:${language}`, {
+    language, ...sourced(overviewTexts[language], overviewSources.claim_ids, overviewSources.evidence_ids), interview_qa: overviewQa[language],
+  }, { ...overviewSources, metric_ids: [] }));
+  records.push(record('selection', 'selection:current', {
+    target_role: '资深后端开发工程师', job_description: '', focus: '规则引擎与解析器实现', languages,
+  }, { selected_group_ids: ['group-rule-parser'] }));
+  records.push(record('open-question', 'q-qps-source', { question: '峰值 2000 QPS 是否有监控截图或答辩材料可以核对？', status: 'open' }, {}));
   return records;
 }
 

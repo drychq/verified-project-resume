@@ -2,19 +2,19 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-`verified-project-resume` is one portable Agent Skill for turning a real software repository into a complete, evidence-backed STAR story library, a guarded resume candidate pool, and a concise role-specific project entry.
+`verified-project-resume` is one portable Agent Skill that turns a person's account of their project work — narrated from memory, with or without code — into a grounded story library, a set of checked bullet options, and a concise role-specific resume entry.
 
 The workflow stays ordered inside one installed skill:
 
 ```text
-repository evidence → personal claims → detailed STAR stories → guarded candidate pool → job-specific selection
+recorded sources → claims and numbers → detailed stories → bullet options → job-specific selection
 ```
 
-This prevents project capabilities, starter code, dependencies, generated code, team work, plans, and unverified metrics from becoming personal achievements. It also prevents resume writing from bypassing STAR.
+Wording may be polished; it may not claim more than its sources support. Technical details, approach, and responsibility phrasing can be proposed by the skill and must be confirmed item by item. Numbers come only from the user or from a measurement — the skill never invents one.
 
-- Version: `0.2.0`
+- Version: `0.3.0`
 - License: MIT
-- Runtime: Node.js 20+ standard library; Git is needed only for local history collection
+- Runtime: Node.js 20+ standard library; narrated work needs no network and no Git
 
 ## Install
 
@@ -32,68 +32,68 @@ npx skills add drychq/verified-project-resume --global
 npx skills add .
 ```
 
-The repository exposes exactly one skill under `skills/verified-project-resume/`. Copy that complete directory when using a host-native or offline installation; do not copy only `SKILL.md`.
+The repository exposes exactly one skill under `skills/verified-project-resume/`. Copy that complete directory for manual or offline installation; do not copy only `SKILL.md`.
 
 ## Use
 
-Full workflow:
+From a spoken account (no code required):
+
+```text
+Use $verified-project-resume to build my resume workspace at /absolute/path/to/output.
+I cannot share my company's code; I will describe what I did.
+Target role: backend engineer. Language: both.
+```
+
+With code available (optional):
 
 ```text
 Use $verified-project-resume to analyze /absolute/path/to/my-project and write the workspace to /absolute/path/to/output.
-My Git identities are Name <name@example.com> and Name <school@example.edu>.
-The starter tag is starter-v1. Ask before running any test or benchmark.
+My Git identities are Name <name@example.com>. The starter tag is starter-v1. Ask before running any test or benchmark.
 Target role: C++ systems engineer. Language: both.
 ```
 
-Retarget verified material later:
+Retarget later:
 
 ```text
 Use $verified-project-resume with /absolute/path/to/output and tailor it to this new job description: ...
-```
-
-Import an archive produced by the retired two-skill workflow:
-
-```text
-Use $verified-project-resume to import /absolute/path/to/star-project.json into /absolute/path/to/output, review the regenerated STAR stories, and then tailor them to this role: ...
 ```
 
 ## Workspace interface
 
 Users work with a directory and four Markdown files:
 
-- `star.md`: every defensible contribution as a complete, detailed STAR story;
-- `resume-candidate-pool.md`: every candidate that passes the fact guard;
+- `stories.md`: every defensible contribution as a complete story with its sources;
+- `bullet-options.md`: every checked bullet option, per language;
 - `resume.md`: a sourced project overview plus one to four bullets per selected language, chosen after reading the target role or job description;
-- `review.md`: workflow acceptance, evidence gaps, warnings, questions, and exclusions.
+- `review.md`: workflow acceptance, gaps, warnings, interview prep, questions, and exclusions.
 
-Machine state lives in `.verified-resume/ledger.jsonl`. It is private implementation data, not a user-managed cross-skill schema; keep it out of shared version control because it records local absolute paths and identity details. New narrative sections and ranking metadata can evolve without an artifact version bump. The single skill reads and writes the ledger together and tolerates unknown optional fields.
+Machine state lives in `.verified-resume/records.jsonl`. It is private implementation data; keep it out of shared version control because it records local absolute paths and identity details.
 
-## Safety guarantees
+## How it stays grounded
 
 - Read-only inventory and Git collection never execute target project code.
-- GitHub lookup is optional and read-only.
-- Tests and benchmarks require exact-command approval and remain separate approvals.
-- Every admissible contribution must be covered by STAR or explicitly omitted with a reason.
-- Every candidate must trace through STAR to admissible claims, metrics, and evidence.
-- The project overview cites ledger sources like any bullet and never introduces new numbers or scale.
-- Only measured or deterministic verified metrics may appear as resume numbers.
-- Guards reject unsupported ownership verbs, dependency escalation, performance comparisons, production/reliability/scale/causal wording, source tampering, and bilingual source drift in bullets and overviews alike.
+- GitHub lookup is optional, read-only, and only when a repository exists.
+- Tests and benchmarks require exact-command approval.
+- Every admissible contribution must be covered by a story or explicitly omitted with a reason.
+- Every bullet traces through its story to recorded sources; project overviews cite their sources like any bullet.
+- Numbers come only from the user or from measurements; user-provided numbers are listed in `review.md` with their source.
+- The checks reject unsupported ownership verbs, dependency escalation, and numbers that appear in no source. Wording that rests only on the user's account (performance, scale, production, causality) becomes a review warning with interview prep instead of a silent claim.
 - One supported story may produce one final bullet; the workflow never duplicates content to reach a minimum count.
 
 ## Validate
 
-Run the offline test suite and a read-only check of the bundled demo:
+Run the offline test suite and a read-only check of the bundled demos:
 
 ```bash
 npm test
-node skills/verified-project-resume/scripts/workspace.mjs validate --ledger examples/synthetic-demo/.verified-resume/ledger.jsonl --stage resume
+node skills/verified-project-resume/scripts/workspace.mjs validate --records examples/narration-demo/.verified-resume/records.jsonl --stage resume
 ```
 
-`npm run demo` regenerates `examples/synthetic-demo/` deterministically after fixture or renderer changes; the `render` subcommand writes the four Markdown files into a workspace, so prefer `validate` for inspection. Both scripts answer `--help` and `--version`.
+`npm run demo` regenerates `examples/synthetic-demo/` and `examples/narration-demo/` deterministically after fixture or renderer changes; the `render` subcommand writes the four Markdown files into a workspace, so prefer `validate` for inspection. Both scripts answer `--help` and `--version`.
 
 The test suite uses only Node.js built-ins, creates temporary Git repositories, and runs offline. It does not install packages or execute external project code.
 
-See [host integration](docs/host-integration.md) for portability requirements. The synthetic [STAR library](examples/synthetic-demo/star.md), [candidate pool](examples/synthetic-demo/resume-candidate-pool.md), [final resume](examples/synthetic-demo/resume.md), and [workflow review](examples/synthetic-demo/review.md) demonstrate the complete flow and do not represent a real person or project.
+See [setup](docs/setup.md) for portability requirements. The narrated [story library](examples/narration-demo/stories.md), [bullet options](examples/narration-demo/bullet-options.md), [final resume](examples/narration-demo/resume.md), and [review with interview prep](examples/narration-demo/review.md) show a confidential project described from memory; the [synthetic demo](examples/synthetic-demo/resume.md) shows the code-assisted path. Neither represents a real person or project.
 
 ## Methodology sources
 

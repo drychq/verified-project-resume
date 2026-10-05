@@ -1,7 +1,7 @@
 {
   "name": "verified-project-resume",
-  "version": "0.2.0",
-  "description": "Portable Agent Skill that turns a real repository into an evidence-backed STAR story library, a guarded candidate pool, and a role-specific resume entry.",
+  "version": "0.3.0",
+  "description": "Portable Agent Skill that turns a narrated project account, or a shared repository, into a grounded story library, bullet options, and a role-specific resume entry.",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -13,6 +13,7 @@
     "agent-skill",
     "resume",
     "star",
+    "narration",
     "evidence"
   ],
   "engines": {

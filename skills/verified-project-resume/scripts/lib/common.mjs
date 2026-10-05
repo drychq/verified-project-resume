@@ -5,7 +5,7 @@ import { closeSync, mkdirSync, openSync, readFileSync, readSync, writeFileSync }
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
-export const VERSION = "0.2.0";
+export const VERSION = "0.3.0";
 
 export function expandUser(value) { return value === "~" ? homedir() : value.startsWith("~/") ? join(homedir(), value.slice(2)) : value; }
 export function absolutePath(value) { return resolve(expandUser(value)); }

@@ -1,8 +1,10 @@
-# GitHub evidence contract
+# GitHub evidence (optional)
+
+Use this only when a repository is in scope and the user authorizes a read-only GitHub lookup. Without a repository, record GitHub as `not-requested`.
 
 ## Collection policy
 
-Use host-provided read-only GitHub integrations when available. Fall back to authenticated `gh` read-only commands. Never create, edit, comment, label, close, merge, or otherwise mutate remote state during dossier construction.
+Use platform-provided read-only GitHub integrations when available. Fall back to authenticated `gh` read-only commands. Never create, edit, comment, label, close, merge, or otherwise mutate remote state during dossier construction.
 
 Collect only the repository and identity in scope. Store source URLs so a reviewer can reopen every record.
 
@@ -21,7 +23,7 @@ Save optional GitHub evidence as JSON with:
 - `checks[]`: name, conclusion, commit SHA, URL;
 - `collection_errors[]`.
 
-Convert relevant records into individual evidence ledger entries rather than citing the entire export for every claim.
+Convert relevant records into individual evidence records rather than citing the entire export for every claim.
 
 ## Interpretation limits
 

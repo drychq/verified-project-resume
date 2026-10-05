@@ -1,6 +1,6 @@
-/** Deterministic wording guards: numeric provenance, ownership verbs, and evidence-tagged language. */
+/** Deterministic text checks: numbers, ownership verbs, and wording that must stay within its sources. */
 
-import { ADMISSIBLE_CLAIM_STATUSES, ADMISSIBLE_METRIC_STATUSES, CONTEXT_SCOPES, LOW_OWNERSHIP_ACTIONS, USER_SCOPES, arrays, isObject } from "./ledger.mjs";
+import { ADMISSIBLE_CLAIM_STATUSES, ADMISSIBLE_METRIC_STATUSES, CONTEXT_SCOPES, LOW_OWNERSHIP_ACTIONS, USER_GROUNDED_STATUSES, USER_SCOPES, arrays, isObject } from "./records.mjs";
 
 const NUMBER_RE = /(?<![\p{L}\p{N}_.+-])\d+(?:[.,]\d+)*(?:\s?(?:%|x|×|ns|us|µs|ms|s|KB|MB|GB|TB|k|K|M|万|亿))?(?![\p{L}\p{N}_])/gu;
 const APPROX_RE = /(?:~|≈|about|around|approximately|roughly|up to|more than|over\s+\d|less than|\d\s*(?:-|–|—|～|to|至)\s*\d|约|大约|近\s*\d|超过|少于|最高)/iu;
@@ -17,28 +17,63 @@ const SCALE_PATTERN = /\bat scale\b|\blarge[- ]scale\b|\bhigh concurrency\b|大�
 const CAUSAL_PATTERN = /\b(?:caused|resulted in|thereby enabled|directly enabled)\b|从而带来|直接促成|因此实现/iu;
 const PERFORMANCE_CAUSAL_PATTERN = /\b(?:improv(?:ed|ing)|reduc(?:ed|ing)|increas(?:ed|ing)|accelerat(?:ed|ing)|speed(?:ed)? up|optimized?)\b|提升|降低|减少|加速|优化(?:了)?/iu;
 
+const TAGGED_WORDING = [
+  [PRODUCTION_PATTERN, "production-evidence", "production"],
+  [RELIABILITY_PATTERN, "reliability-evidence", "reliability"],
+  [SCALE_PATTERN, "scale-evidence", "scale"],
+  [CAUSAL_PATTERN, "causal-evidence", "causal"],
+];
+const PROPOSAL_FORBIDDEN = [
+  [PERFORMANCE_CAUSAL_PATTERN, "performance"],
+  [CAUSAL_PATTERN, "causal"],
+  [PRODUCTION_PATTERN, "production"],
+  [RELIABILITY_PATTERN, "reliability"],
+  [SCALE_PATTERN, "scale"],
+];
+
 export function numericTokens(text) { return new Set([...String(text).matchAll(NUMBER_RE)].map((match) => match[0].replaceAll(" ", ""))); }
 
-function sourceNumericTokens(claims, metrics) {
+function metricNumericTokens(metric) {
   const tokens = new Set();
-  for (const claim of claims) for (const token of numericTokens(claim.data.text ?? "")) tokens.add(token);
-  for (const metric of metrics) {
-    const unit = String(metric.data.unit ?? "");
-    for (const field of ["value", "baseline", "result"]) if (metric.data[field] != null) {
-      const value = String(metric.data[field]);
-      tokens.add(value.replaceAll(" ", ""));
-      tokens.add((value + unit).replaceAll(" ", ""));
-      for (const token of numericTokens(value)) tokens.add(token);
-    }
+  const unit = String(metric.data.unit ?? "");
+  for (const field of ["value", "baseline", "result"]) if (metric.data[field] != null) {
+    const value = String(metric.data[field]);
+    tokens.add(value.replaceAll(" ", ""));
+    tokens.add((value + unit).replaceAll(" ", ""));
+    for (const token of numericTokens(value)) tokens.add(token);
   }
   return tokens;
 }
 
-export function guardText(itemPath, text, claims, metrics, errors, { actionContext = false, ownershipContext = actionContext } = {}) {
+function sourceNumericTokens(claims, metrics) {
+  const tokens = new Set();
+  for (const claim of claims) for (const token of numericTokens(claim.data.text ?? "")) tokens.add(token);
+  for (const metric of metrics) for (const token of metricNumericTokens(metric)) tokens.add(token);
+  return tokens;
+}
+
+function userSourcedNumericTokens(claims, metrics) {
+  const tokens = new Set();
+  for (const claim of claims) if (USER_GROUNDED_STATUSES.has(claim.data.status)) for (const token of numericTokens(claim.data.text ?? "")) tokens.add(token);
+  for (const metric of metrics) if (metric.data.status === "user-provided") for (const token of metricNumericTokens(metric)) tokens.add(token);
+  return tokens;
+}
+
+function isUserGrounded(claims) { return claims.length > 0 && claims.every((claim) => USER_GROUNDED_STATUSES.has(claim.data.status)); }
+
+function hasVerifiedPerformanceMetric(metrics) {
+  return metrics.some((metric) => metric.data.kind === "performance" && metric.data.status === "verified-measured" && metric.data.baseline != null && metric.data.result != null && metric.data.measurement_method);
+}
+
+export function checkText(itemPath, text, claims, metrics, errors, { actionContext = false, ownershipContext = actionContext, warnings = [] } = {}) {
   const textNumbers = numericTokens(text);
   const allowed = sourceNumericTokens(claims, metrics);
   for (const token of [...textNumbers].filter((value) => !allowed.has(value)).sort()) errors.push(`${itemPath}: numeric token '${token}' is not present in cited admissible sources`);
-  if (textNumbers.size && APPROX_RE.test(text)) errors.push(`${itemPath}: approximate or range language is not allowed for numeric claims`);
+  if (textNumbers.size && APPROX_RE.test(text)) {
+    const userNumbers = userSourcedNumericTokens(claims, metrics);
+    if ([...textNumbers].every((token) => userNumbers.has(token))) warnings.push(`${itemPath}: approximate wording on a number you provided; be ready to explain its source`);
+    else errors.push(`${itemPath}: approximate or range language is not allowed for numeric claims`);
+  }
   const assertedText = text.replace(/\bwithout\s+(?:claiming|asserting)[^.,;]*/giu, "").replace(/不(?:声称|主张|表示)[^，。；]*/gu, "");
   if (ownershipContext) {
     const ownership = new Set(claims.map((claim) => claim.data.ownership_level));
@@ -52,14 +87,48 @@ export function guardText(itemPath, text, claims, metrics, errors, { actionConte
       if (kinds.size && [...kinds].every((value) => LOW_OWNERSHIP_ACTIONS.has(value)) && (IMPLEMENT_PATTERN.test(assertedText) || DESIGN_PATTERN.test(assertedText))) errors.push(`${itemPath}: integration/configuration/call evidence was escalated`);
     }
   }
+  const userGrounded = isUserGrounded(claims);
   const tags = new Set(claims.flatMap((claim) => arrays(claim.data.tags)));
-  for (const [pattern, tag, label] of [[PRODUCTION_PATTERN, "production-evidence", "production"], [RELIABILITY_PATTERN, "reliability-evidence", "reliability"], [SCALE_PATTERN, "scale-evidence", "scale"], [CAUSAL_PATTERN, "causal-evidence", "causal"]]) {
-    if (pattern.test(text) && !tags.has(tag)) errors.push(`${itemPath}: ${label} wording lacks a ${tag} claim`);
+  for (const [pattern, tag, label] of TAGGED_WORDING) {
+    if (!pattern.test(text) || tags.has(tag)) continue;
+    if (userGrounded) warnings.push(`${itemPath}: ${label} wording rests on your account only; prepare an answer for interview follow-ups`);
+    else errors.push(`${itemPath}: ${label} wording lacks a ${tag} claim`);
   }
-  if (PERFORMANCE_CAUSAL_PATTERN.test(text) && !metrics.some((metric) => metric.data.kind === "performance" && metric.data.status === "verified-measured" && metric.data.baseline != null && metric.data.result != null && metric.data.measurement_method)) errors.push(`${itemPath}: causal performance wording lacks verified baseline, result, and method`);
+  if (PERFORMANCE_CAUSAL_PATTERN.test(text) && !hasVerifiedPerformanceMetric(metrics)) {
+    if (userGrounded) warnings.push(`${itemPath}: performance wording rests on your account only; prepare an answer for interview follow-ups`);
+    else errors.push(`${itemPath}: causal performance wording lacks verified baseline, result, and method`);
+  }
 }
 
-export function validateSourced(item, itemPath, indexes, errors, { actionContext = false, allowContext = false, ownershipContext = actionContext } = {}) {
+/** A confirmed proposal may only restate what the user already provided: no new numbers, no new result or scale wording. */
+export function checkProposal(itemPath, proposalText, userText, errors) {
+  const userNumbers = numericTokens(userText);
+  for (const token of [...numericTokens(proposalText)].filter((value) => !userNumbers.has(value)).sort()) errors.push(`${itemPath}: proposed number '${token}' was not provided by the user`);
+  for (const [pattern, label] of PROPOSAL_FORBIDDEN) {
+    if (pattern.test(proposalText) && !pattern.test(userText)) errors.push(`${itemPath}: proposal introduces ${label} wording the user did not provide`);
+  }
+}
+
+/** Sorted review flags describing how a piece of resume text is grounded. */
+export function reviewFlags(text, claims, metrics) {
+  const flags = new Set();
+  if (claims.some((claim) => claim.data.status === "user-confirmed")) flags.add("user-stated-claim");
+  if (claims.some((claim) => claim.data.status === "user-approved")) flags.add("proposal-confirmed-claim");
+  if (metrics.some((metric) => metric.data.status === "user-provided")) flags.add("user-provided-number");
+  const userGrounded = isUserGrounded(claims);
+  const tags = new Set(claims.flatMap((claim) => arrays(claim.data.tags)));
+  for (const [pattern, tag, label] of TAGGED_WORDING) if (pattern.test(text) && !tags.has(tag) && userGrounded) flags.add(`user-grounded-${label}`);
+  if (PERFORMANCE_CAUSAL_PATTERN.test(text) && !hasVerifiedPerformanceMetric(metrics) && userGrounded) flags.add("user-grounded-performance");
+  const textNumbers = numericTokens(text);
+  if (textNumbers.size && APPROX_RE.test(text) && [...textNumbers].every((token) => userSourcedNumericTokens(claims, metrics).has(token))) flags.add("approximate-user-number");
+  for (const metric of metrics.filter((item) => item.data.status === "user-provided" && item.data.kind === "performance")) {
+    if (metric.data.baseline == null) flags.add("no-baseline");
+    if (!metric.data.measurement_method) flags.add("no-method");
+  }
+  return [...flags].sort();
+}
+
+export function validateSourced(item, itemPath, indexes, errors, { actionContext = false, allowContext = false, ownershipContext = actionContext, warnings = [] } = {}) {
   if (!isObject(item) || typeof item.text !== "string" || !item.text.trim()) { errors.push(`${itemPath}: sourced text with non-empty text required`); return; }
   const claimIds = arrays(item.claim_ids);
   const evidenceIds = arrays(item.evidence_ids);
@@ -88,5 +157,5 @@ export function validateSourced(item, itemPath, indexes, errors, { actionContext
   const supportedEvidence = new Set([...claims, ...metrics].flatMap((source) => arrays(source.refs.evidence_ids)));
   for (const id of evidenceIds) if (!supportedEvidence.has(id)) errors.push(`${itemPath}: evidence '${id}' is not attached to a cited claim or metric`);
   if (actionContext && !claims.some((claim) => USER_SCOPES.has(claim.data.scope))) errors.push(`${itemPath}: action requires a user-scoped claim`);
-  guardText(`${itemPath}.text`, item.text, claims, metrics, errors, { actionContext, ownershipContext });
+  checkText(`${itemPath}.text`, item.text, claims, metrics, errors, { actionContext, ownershipContext, warnings });
 }

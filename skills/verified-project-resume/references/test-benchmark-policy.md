@@ -1,10 +1,10 @@
-# Test and benchmark evidence policy
+# Test and benchmark policy
 
 ## Execution approval
 
 Repository commands are opt-in. Before execution, show the exact command, working directory, expected duration, likely caches/build artifacts, and whether network access is needed. Approval is command-specific.
 
-Never run installation, migration, deployment, destructive cleanup, fuzzing, load tests, or external-service tests under a generic “run tests” approval.
+Never run installation, migration, deployment, destructive cleanup, fuzzing, load tests, or external-service tests under a generic "run tests" approval.
 
 ## Test evidence
 
@@ -32,7 +32,7 @@ A performance comparison is `verified-measured` only when evidence contains:
 - raw result artifact;
 - clear association with the user's change.
 
-If any required part is missing, classify as `documented-unverified`, `theoretical`, `target`, `planned`, or `unknown` as appropriate.
+If any required part is missing, classify the number as `user-provided` when the user states it from memory or records, or `documented-unverified`, `theoretical`, `target`, `planned`, or `unknown` as appropriate.
 
 ## Metric classes
 
@@ -40,21 +40,23 @@ If any required part is missing, classify as `documented-unverified`, `theoretic
 |---|---|---|
 | `verified-measured` | Reproducible measurement or authoritative raw run | Yes |
 | `verified-count` | Deterministic count recomputed from artifacts | Yes |
+| `user-provided` | Number the user states from memory or records | Yes, with `review_flags: ["user-provided-number"]`, a source note, and a listing in `review.md` |
 | `documented-unverified` | Number stated in prose without sufficient measurement evidence | No |
-| `user-confirmed` | User remembers or estimates the number | No |
 | `theoretical` | Expected or analytical benefit | No |
 | `target` | Requirement, SLA, or designed-for capacity | No |
 | `planned` | Future work | No |
 | `unknown` | Insufficient context | No |
 
+The skill never proposes a number. When a number is missing, ask a guiding question (magnitude, peak versus typical, compared with what, over what period) instead.
+
 ## Result wording
 
-Without an admissible metric, prefer verified outcomes such as:
+Without an admissible number, prefer supported outcomes such as:
 
 - passed named tests;
 - satisfied a documented invariant;
 - implemented a bounded capability;
 - eliminated a reproduced defect;
-- added a verified engineering safeguard.
+- added an engineering safeguard.
 
-Do not add “production-grade,” “high availability,” “zero downtime,” “at scale,” or similar language unless directly supported by admissible claims.
+Do not add "production-grade", "high availability", "zero downtime", "at scale", or similar language unless directly supported by admissible claims.

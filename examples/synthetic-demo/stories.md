@@ -1,6 +1,6 @@
-# Course Index — Verified STAR Story Library
+# Course Index — Story Library
 
-This human-readable file is rendered from the private evidence ledger. Each story is contribution-centered and source-linked.
+Rendered from the private records file. Each story is one contribution, with its sources listed.
 
 ## 1. parser implementation and validation
 
@@ -10,7 +10,7 @@ This human-readable file is rendered from the private evidence ledger. Each stor
 
 ### Situation
 
-- The verified project path required a bounded parser change.
+- The project required a bounded parser change within the existing module.
   - Claims: `claim-parser`; Evidence: `ev-parser`; Metrics: none
 
 ### Task
@@ -27,7 +27,7 @@ This human-readable file is rendered from the private evidence ledger. Each stor
 
 ### Result
 
-- Established the verified parser capability within the tested project boundary.
+- Established the parser capability within the cited project boundary.
   - Claims: `claim-parser`; Evidence: `ev-parser`; Metrics: none
 
 ### Constraints
@@ -44,7 +44,7 @@ This human-readable file is rendered from the private evidence ledger. Each stor
 
 ### Result boundaries
 
-- The evidence supports the project-specific capability, not production scale or reliability.
+- The sources support the project-specific capability, not production scale or reliability.
 
 ### Interview questions
 
@@ -62,7 +62,7 @@ _Not recorded._
 
 ### Situation
 
-- The verified project path required a bounded storage change.
+- The project required a bounded storage change within the existing module.
   - Claims: `claim-storage`; Evidence: `ev-storage`; Metrics: none
 
 ### Task
@@ -79,7 +79,7 @@ _Not recorded._
 
 ### Result
 
-- Established the verified storage capability within the tested project boundary.
+- Established the storage capability within the cited project boundary.
   - Claims: `claim-storage`; Evidence: `ev-storage`; Metrics: none
 
 ### Constraints
@@ -96,7 +96,7 @@ _Not recorded._
 
 ### Result boundaries
 
-- The evidence supports the project-specific capability, not production scale or reliability.
+- The sources support the project-specific capability, not production scale or reliability.
 
 ### Interview questions
 
@@ -114,7 +114,7 @@ _Not recorded._
 
 ### Situation
 
-- The verified project path required a bounded cache change.
+- The project required a bounded cache change within the existing module.
   - Claims: `claim-cache`; Evidence: `ev-cache`; Metrics: none
 
 ### Task
@@ -131,7 +131,7 @@ _Not recorded._
 
 ### Result
 
-- Established the verified cache capability within the tested project boundary.
+- Established the cache capability within the cited project boundary.
   - Claims: `claim-cache`; Evidence: `ev-cache`; Metrics: none
 
 ### Constraints
@@ -148,7 +148,7 @@ _Not recorded._
 
 ### Result boundaries
 
-- The evidence supports the project-specific capability, not production scale or reliability.
+- The sources support the project-specific capability, not production scale or reliability.
 
 ### Interview questions
 
@@ -166,7 +166,7 @@ _Not recorded._
 
 ### Situation
 
-- The verified project path required a bounded scheduler change.
+- The project required a bounded scheduler change within the existing module.
   - Claims: `claim-scheduler`; Evidence: `ev-scheduler`; Metrics: none
 
 ### Task
@@ -183,7 +183,7 @@ _Not recorded._
 
 ### Result
 
-- Established the verified scheduler capability within the tested project boundary.
+- Established the scheduler capability within the cited project boundary.
   - Claims: `claim-scheduler`; Evidence: `ev-scheduler`; Metrics: none
 
 ### Constraints
@@ -200,7 +200,7 @@ _Not recorded._
 
 ### Result boundaries
 
-- The evidence supports the project-specific capability, not production scale or reliability.
+- The sources support the project-specific capability, not production scale or reliability.
 
 ### Interview questions
 
@@ -218,7 +218,7 @@ _Not recorded._
 
 ### Situation
 
-- The verified project path required a bounded protocol change.
+- The project required a bounded protocol change within the existing module.
   - Claims: `claim-protocol`; Evidence: `ev-protocol`; Metrics: none
 
 ### Task
@@ -235,7 +235,7 @@ _Not recorded._
 
 ### Result
 
-- Established the verified protocol capability within the tested project boundary.
+- Established the protocol capability within the cited project boundary.
   - Claims: `claim-protocol`; Evidence: `ev-protocol`; Metrics: none
 
 ### Constraints
@@ -252,7 +252,7 @@ _Not recorded._
 
 ### Result boundaries
 
-- The evidence supports the project-specific capability, not production scale or reliability.
+- The sources support the project-specific capability, not production scale or reliability.
 
 ### Interview questions
 
@@ -270,7 +270,7 @@ _Not recorded._
 
 ### Situation
 
-- The verified project path required a bounded index change.
+- The project required a bounded index change within the existing module.
   - Claims: `claim-index`; Evidence: `ev-index`; Metrics: none
 
 ### Task
@@ -287,7 +287,7 @@ _Not recorded._
 
 ### Result
 
-- Established the verified index capability within the tested project boundary.
+- Established the index capability within the cited project boundary.
   - Claims: `claim-index`; Evidence: `ev-index`; Metrics: none
 
 ### Constraints
@@ -304,7 +304,7 @@ _Not recorded._
 
 ### Result boundaries
 
-- The evidence supports the project-specific capability, not production scale or reliability.
+- The sources support the project-specific capability, not production scale or reliability.
 
 ### Interview questions
 

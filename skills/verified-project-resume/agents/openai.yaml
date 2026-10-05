@@ -1,6 +1,6 @@
 interface:
   display_name: "Verified Project Resume"
-  short_description: "Build evidence-backed STAR stories and tailored resumes"
-  default_prompt: "Use $verified-project-resume to analyze <absolute repository path> and write the workspace to <absolute output path>. My Git identities are <Name <email@example.com>>. Target role: <role>."
+  short_description: "Build grounded stories and tailored resumes from your own account"
+  default_prompt: "Use $verified-project-resume to build my resume workspace from what I describe. I cannot share my company's code. Target role: <role>."
 policy:
   allow_implicit_invocation: false

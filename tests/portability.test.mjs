@@ -4,8 +4,8 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { makeLedger } from './fixture-data.mjs';
-import { renderPool, renderResume, renderReview, renderStar } from '../skills/verified-project-resume/scripts/workspace.mjs';
+import { makeNarrationRecords, makeRepositoryRecords } from './fixture-data.mjs';
+import { renderBulletOptions, renderResume, renderReview, renderStories, validateRecords } from '../skills/verified-project-resume/scripts/workspace.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILL = path.join(ROOT, 'skills', 'verified-project-resume');
@@ -20,6 +20,11 @@ async function filesBelow(directory) {
   return output;
 }
 
+const DEMOS = [
+  { dir: 'examples/synthetic-demo', make: () => makeRepositoryRecords({ storyCount: 6, selectedCount: 3, languages: ['zh-CN', 'en'] }) },
+  { dir: 'examples/narration-demo', make: () => makeNarrationRecords() },
+];
+
 test('top-level skills directory exposes one consolidated skill', async () => {
   const entries = await readdir(path.join(ROOT, 'skills'), { withFileTypes: true });
   const discovered = [];
@@ -29,13 +34,14 @@ test('top-level skills directory exposes one consolidated skill', async () => {
   assert.deepEqual(discovered.sort(), ['verified-project-resume']);
 });
 
-test('skill frontmatter is valid and matches its directory', async () => {
+test('skill frontmatter is valid, matches its directory, and mentions narrated accounts', async () => {
   const text = await readFile(path.join(SKILL, 'SKILL.md'), 'utf8');
   const match = text.match(/^---\n([\s\S]*?)\n---\n/);
   assert.ok(match);
   const fields = Object.fromEntries(match[1].split('\n').map((line) => { const index = line.indexOf(':'); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
   assert.equal(fields.name, 'verified-project-resume');
   assert.ok(fields.description.length > 100);
+  assert.match(fields.description, /narrat/i);
 });
 
 test('single skill is self-contained and Node-only', async () => {
@@ -49,7 +55,7 @@ test('single skill is self-contained and Node-only', async () => {
   }
 });
 
-test('core instructions are host-neutral and keep JSONL private', async () => {
+test('core instructions stay platform-neutral and keep the records file private', async () => {
   const text = (await readFile(path.join(SKILL, 'SKILL.md'), 'utf8')).toLowerCase();
   for (const marker of ['codex', 'openai', 'claude code']) assert.ok(!text.includes(marker));
   assert.match(text, /private machine state|machine records/);
@@ -75,13 +81,24 @@ test('script version matches package metadata and both READMEs', async () => {
   for (const name of ['README.md', 'README.zh-CN.md']) assert.ok((await readFile(path.join(ROOT, name), 'utf8')).includes(VERSION), name);
 });
 
-test('checked-in demo ships the four Markdown artifacts and the private ledger', async () => {
-  for (const name of ['star.md', 'resume-candidate-pool.md', 'resume.md', 'review.md', '.verified-resume/ledger.jsonl']) assert.ok(await stat(path.join(ROOT, 'examples/synthetic-demo', name)));
+test('each checked-in demo ships the four Markdown files and the private records file', async () => {
+  for (const demo of DEMOS) for (const name of ['stories.md', 'bullet-options.md', 'resume.md', 'review.md', '.verified-resume/records.jsonl']) assert.ok(await stat(path.join(ROOT, demo.dir, name)), `${demo.dir}/${name}`);
 });
 
-test('checked-in demo is exactly reproducible from the generator fixture', async () => {
-  const records = makeLedger({ storyCount: 6, selectedCount: 3, languages: ['zh-CN', 'en'] });
-  const demo = path.join(ROOT, 'examples/synthetic-demo');
-  assert.equal(await readFile(path.join(demo, '.verified-resume/ledger.jsonl'), 'utf8'), `${records.map((item) => JSON.stringify(item)).join('\n')}\n`);
-  for (const [name, expected] of [['star.md', renderStar(records)], ['resume-candidate-pool.md', renderPool(records)], ['resume.md', renderResume(records)], ['review.md', renderReview(records, [])]]) assert.equal(await readFile(path.join(demo, name), 'utf8'), expected, name);
+test('each checked-in demo is exactly reproducible from its fixture', async () => {
+  for (const demo of DEMOS) {
+    const records = demo.make();
+    assert.equal(await readFile(path.join(ROOT, demo.dir, '.verified-resume/records.jsonl'), 'utf8'), `${records.map((item) => JSON.stringify(item)).join('\n')}\n`, demo.dir);
+    const warnings = [];
+    const errors = await validateRecords(records, { stage: 'resume', verifyFiles: true, warnings });
+    assert.deepEqual(errors, [], demo.dir);
+    for (const [name, expected] of [['stories.md', renderStories(records)], ['bullet-options.md', renderBulletOptions(records)], ['resume.md', renderResume(records)], ['review.md', renderReview(records, errors, warnings)]]) assert.equal(await readFile(path.join(ROOT, demo.dir, name), 'utf8'), expected, `${demo.dir}/${name}`);
+  }
+});
+
+test('the narration demo shows the interview prep workflow in review.md', async () => {
+  const review = await readFile(path.join(ROOT, 'examples/narration-demo', 'review.md'), 'utf8');
+  assert.match(review, /## Interview prep/);
+  assert.match(review, /2000 QPS/);
+  assert.match(review, /approximate wording/);
 });
